@@ -1,0 +1,23 @@
+*.egg-info/
+**/.ipynb_checkpoints/
+**/__pycache__/
+dist/
+build/
+*.py[cod]
+node_modules/
+ts-src/node_modules/
+
+# Compiled javascript
+jppype/nbextension/
+jppype/labextension/
+ts-src/lib/
+
+# lock
+*.lock
+
+# OS X
+.DS_Store
+
+# IDE
+.idea/
+venv/

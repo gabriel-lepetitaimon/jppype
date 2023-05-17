@@ -1,0 +1,11 @@
+.custom-widget {
+  padding: 0px 2px;
+}
+
+.jp-LinkedOutputView .jp-OutputArea-output:only-child {
+  margin: 0;
+}
+
+.jp-LinkedOutputView .maximizing-widget{
+  height: 100%;
+}

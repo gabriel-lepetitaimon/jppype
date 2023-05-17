@@ -1,0 +1,26 @@
+[project]
+
+name = "Jupyter-ProtoPype"
+version = '0.1.0'
+authors = [
+    {name = 'Gabriel Lepetit-Aimon', email= 'gabriel.lepetitaimon@gmail.com' }
+]
+description = "JupyterLab extension adding data visualisation widgets."
+readme = "README.md"
+
+requires-python = ">=3.10"
+dependencies = [
+    "ipykernel",
+    "ipywidgets",
+    "numpy",
+    "opencv-python-headless",
+    "webcolors"
+]
+
+[project.urls]
+Homepage = 'https://github.com/gabriel-lepetitaimon/jppype'
+Source = 'https://github.com/gabriel-lepetitaimon/jppype'
+
+[build-system]
+requires = ["jupyter_packaging~=0.7.9", "jupyterlab~=3.0", "setuptools>=40.8.0", "wheel"]
+build-backend = "setuptools.build_meta"
