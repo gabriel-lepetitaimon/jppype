@@ -8,8 +8,6 @@ node_modules/
 ts-src/node_modules/
 
 # Compiled javascript
-jppype/nbextension/
-jppype/labextension/
 ts-src/lib/
 
 # lock
