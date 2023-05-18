@@ -15,7 +15,7 @@ from traitlets import Unicode, Int
 Information about the frontend package of the ipywidgets.
 """
 module_name = "jppype"
-module_version = NPM_PACKAGE_RANGE
+module_version = "0.1.0"
 
 
 class BaseI3PWidget(DOMWidget):
