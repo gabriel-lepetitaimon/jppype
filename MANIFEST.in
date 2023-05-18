@@ -2,7 +2,6 @@ graft jppype/nbextension
 graft jppype/labextension
 
 graft ts-src
-graft tests
 prune **/node_modules
 
 include jppype.json

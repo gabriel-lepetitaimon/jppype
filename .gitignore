@@ -2,22 +2,25 @@
 **/.ipynb_checkpoints/
 **/__pycache__/
 dist/
-build/
+venv/
 *.py[cod]
 node_modules/
-ts-src/node_modules/
+
 
 # Compiled javascript
 jppype/nbextension/
 jppype/labextension/
 ts-src/lib/
+ts-src/dist/
 
-# lock
-*.lock
+# lock & npm package dependency
+ts-src/package-lock.json
+ts-src/.yarn*
+ts-src/node_modules/
+ts-src/.pnp.*
 
 # OS X
 .DS_Store
 
 # IDE
 .idea/
-venv/

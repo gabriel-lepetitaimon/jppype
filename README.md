@@ -47,15 +47,25 @@ viewer
 
 ## Development Installation
 
-For a development installation (requires [Node.js](https://nodejs.org) and [Yarn version 1](https://classic.yarnpkg.com/)),
+Pull the latest version of the repository
 ```bash
 git clone https://github.com/gabriel-lepetitaimon/jppype.git
 cd jppype
+````
+
+For a development installation (requires [Node.js](https://nodejs.org) and [Yarn version 1](https://classic.yarnpkg.com/)):
+```bash
+conda create -n jppype python=3.10
+conda install -c conda-forge yarn nodejs
+```
+
+Install the python package and the extensions in development mode:
+```bash
 pip install -e .
 jupyter nbextension install --py --symlink --overwrite --sys-prefix jppype
 jupyter nbextension enable --py --sys-prefix jppype
 ```
-When actively developing your extension for JupyterLab, run the command:
+If you which to develop for JupyterLab, also run the command:
 ```bash
 jupyter labextension develop --overwrite jppype
 ```
