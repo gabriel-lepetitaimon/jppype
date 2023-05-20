@@ -56,6 +56,9 @@ build = [
 Homepage = " https://github.com/gabriel-lepetitaimon/jppype"
 Source = "https://github.com/gabriel-lepetitaimon/jppype"
 
+[tool.hatch.metadata]
+allow-direct-references = true
+
 [tool.hatch.build]
 artifacts = [
     "jppype/nbextension/index.*",
