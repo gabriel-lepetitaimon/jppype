@@ -51,6 +51,7 @@ build = [
     "build",
     "tbump"
 ]
+dev = ["jupyterlab~=4.0.0"]
 
 [project.urls]
 Homepage = " https://github.com/gabriel-lepetitaimon/jppype"
