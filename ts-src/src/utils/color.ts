@@ -33,9 +33,8 @@ export function cmap2RGBAlookup(labels: number[] | number, cmap: { [key: number]
 
 export function cmap2Hexlookup(labels: number[] | number, cmap: { [key: number]: string}, defaultColor='#0000'): CMapHex {
     const defaultColors = cmap[0] || defaultColor;
-
     if(Array.isArray(labels)) {
-        return Object.fromEntries((labels as number[])
+        const c = Object.fromEntries((labels as number[])
                                   .filter(l => l!==0)
                                   .map(l => {
             let color;
@@ -46,6 +45,7 @@ export function cmap2Hexlookup(labels: number[] | number, cmap: { [key: number]:
             }
             return [l, color];
         }));
+        return c;
     } else {
         return Array.from({length: labels+1}, (_, i) => i).map(l => {
             if(l===0) return "#0000";

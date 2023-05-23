@@ -31,7 +31,7 @@ export default function View2DRender(props: View2DRenderProps) {
             <ImageLayer
               data={data}  options={opt}
               sceneDomain={props.sceneDomain}
-              smooth={pixelSize < 10}
+              pixelSize={pixelSize}
               key={name}
             />);
         break;
@@ -41,7 +41,7 @@ export default function View2DRender(props: View2DRenderProps) {
               data={data}  options={opt}
               sceneDomain={props.sceneDomain}
               key={name}
-              smooth={pixelSize < 10}
+              pixelSize={pixelSize}
             />);
         break;
       case 'graph':
@@ -60,9 +60,11 @@ export default function View2DRender(props: View2DRenderProps) {
 }
 
 
-function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, smooth: boolean }) {
+function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
   const { data, options, sceneDomain } = props;
   const { opacity } = options;
+
+  const pixelSize = options.domain.width/data.infos.width * props.pixelSize;
 
   return (
     <img
@@ -70,22 +72,22 @@ function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       alt={options.label}
       style={{
         opacity: opacity,
-        imageRendering: props.smooth ? 'auto' : 'pixelated',
+        imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
         ...positionStyle(options.domain, sceneDomain),
       }}
     />
   );
 }
 
-function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, smooth: boolean}) {
+function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number}) {
   const { data, options, sceneDomain } = props;
   const { opacity } = options;
 
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const cMap = useMemo(
-        () => cmap2RGBAlookup(data.infos.label, options.cmap),
-        [data.infos.label, options.options.cmap]);
+        () => cmap2RGBAlookup(data.infos.labels, options.cmap),
+        [data.infos.label, options.cmap]);
 
     useEffect(() => {
       const canvas = canvasRef.current;
@@ -96,12 +98,14 @@ function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       drawLabels(canvas, data.data, cMap);
     }, [data.data, options.cmap])
 
+    const pixelSize = options.domain.width/(canvasRef.current?.width??options.domain.width) * props.pixelSize;
+
     return (
         <canvas
           ref={canvasRef}
           style={{
             opacity: opacity,
-            imageRendering: props.smooth ? 'crisp-edges' : 'pixelated',
+            imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
             ...positionStyle(options.domain, sceneDomain),
           }}
       />);
@@ -172,13 +176,14 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     }, [data.data.branchMap, options.branches_cmap, data.data.branchMap ? null : props.pixelSize+options.branches_opacity])
 
     const posStyle = positionStyle(options.domain, sceneDomain);
+    const pixelSize = options.domain.width/(branchCanvasRef.current?.width??options.domain.width) * props.pixelSize;
 
     return (
         <>
           <canvas
             ref={branchCanvasRef}
             style={{
-              imageRendering: props.pixelSize > 4 ? 'crisp-edges' : 'pixelated',
+              imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
                 opacity: options.branches_opacity * opacity,
               ...posStyle
             }}
@@ -240,7 +245,6 @@ function drawLabels(canvas: HTMLCanvasElement, imgSrc: string, cmapLookup: CMapR
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-
     colorizeLabelInplace(imageData, cmapLookup);
     ctx.putImageData(imageData, 0, 0);
   }
