@@ -160,7 +160,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       const ctx = canvas.getContext("2d");
       if (ctx == null) return;
 
-      if (data.data.edgeMap == null || options.edge_as_edge) {
+      if (data.data.edgeMap == null || options.edge_map_visible) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         edgesSvgRef.current = adjList.map((nodes: number[], i: number) => {
           const node1_yx = data.data.nodes_yx[nodes[0]];
@@ -186,7 +186,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
         drawLabels(canvas, data.data.edgeMap, edgeRGBACMap);
       }
     }, [options.edges_cmap,
-        (data.data.edgeMap==null || options.edge_as_edge)
+        (data.data.edgeMap==null || options.edge_map_visible)
             ? props.pixelSize+options.edges_opacity + (options.edge_labels_visible?100:0)
             : data.data.edgeMap])
 

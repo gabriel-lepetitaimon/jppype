@@ -276,7 +276,7 @@ class LayerGraph(Layer):
         self.edges_opacity = 0.7
         self.node_labels_visible = False
         self.edge_labels_visible = False
-        self.edge_as_edge = edge_map is None
+        self.edge_map_visible = edge_map is None
 
     def set_graph(self, adjacency_list, nodes_coordinates, edge_map=None, nodes_domains: Rect | None = None):
         if nodes_domains is None and edge_map is not None:
@@ -298,7 +298,7 @@ class LayerGraph(Layer):
                 self._options[k] = bool(v)
             elif k == 'edge_labels_visible':
                 self._options[k] = bool(v)
-            elif k == 'edge_as_edge':
+            elif k == 'edge_map_visible':
                 self._options[k] = bool(v)
         super().set_options(options, raise_on_error)
 
@@ -418,12 +418,12 @@ class LayerGraph(Layer):
         self.set_options({'edge_labels_visible': cmap})
 
     @property
-    def edge_as_edge(self):
-        return self._options.get('edge_as_edge', False)
+    def edge_map_visible(self):
+        return self._options.get('edge_map_visible', False)
 
-    @edge_as_edge.setter
-    def edge_as_edge(self, cmap):
-        self.set_options({'edge_as_edge': cmap})
+    @edge_map_visible.setter
+    def edge_map_visible(self, cmap):
+        self.set_options({'edge_map_visible': cmap})
 
     @property
     def edges_opacity(self):
