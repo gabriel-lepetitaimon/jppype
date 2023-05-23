@@ -1,6 +1,6 @@
 from ._version import __version__
 
-from .view2d import View2D
+from .view2d import View2D, imshow
 
 
 def _jupyter_labextension_paths():
