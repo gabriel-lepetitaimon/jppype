@@ -119,7 +119,6 @@ function View2D(props: View2DProps) {
   const cursorPos = useSceneMouseEventListener(zoomTransform, userEvents);
 
   useModelEvent('change:_target_transform', (model) => {
-    console.log('change:_target_transform');
     zoomTransform.dispatch({
       transform: model.get('_target_transform'),
       animation: { duration: 500 },

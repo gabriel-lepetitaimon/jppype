@@ -202,7 +202,9 @@ class Rect(tuple):
         return self.w == 0 or self.h == 0
 
     @staticmethod
-    def is_empty(rect: Rect) -> bool:
+    def is_empty(rect: Rect | None) -> bool:
+        if rect is None:
+            return True
         if isinstance(rect, tuple) and len(rect) == 4:
             rect = Rect(*rect)
         return isinstance(rect, tuple) and (rect.w == 0 or rect.h == 0)

@@ -9,7 +9,7 @@ import numpy as np
 import json
 import traitlets
 from ._frontend import BaseI3PWidget, ABCHasTraitMeta
-from .layers_2d import LayerLabel, LayerImage
+from .layers_2d import LayerLabel, LayerImage, LayerGraph
 from .layer_base import LayersList, Layer
 from .utils import EventsDispatcher, FlagContext
 
@@ -52,7 +52,6 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         current_data = self._layers_data.copy()
         for layer in layers:
             current_data[self.get_layers_alias(layer)] = layer.get_data().to_json_bytes()
-
         with self._transmit:
             self._layers_data = current_data
 
@@ -68,17 +67,29 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         self._loading = value
 
     # --- Specialized methods to add layers ---
-    def add_image(self, img, layer_name: str | None = None,
+    def add_image(self, img, name: str | None = None,
                   vmax: Literal['auto'] | float | None = 'auto', vmin: Literal['auto'] | float | None = 'auto',
-                  resize_buffer: Tuple[int, int] | int | None = None) -> LayerImage:
+                  resize_buffer: Tuple[int, int] | int | None = None,
+                  options=None) -> LayerImage:
         layer = LayerImage(img, vmax=vmax, vmin=vmin, resize_buffer=resize_buffer)
-        self.add_layer(layer, alias=layer_name)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
         return layer
 
-    def add_label(self, label, layer_name: str | None = None,
-                  colormap: str | None = None) -> LayerLabel:
+    def add_label(self, label, name: str | None = None, colormap: str | None = None, options=None) -> LayerLabel:
         layer = LayerLabel(label, colormap=colormap)
-        self.add_layer(layer, alias=layer_name)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
+        return layer
+
+    def add_graph(self, adjacency_list: np.ndarray, nodes_yx: tuple[np.ndarray, np.ndarray],
+                  branch_labels: np.ndarray | None = None, name: str | None = None, options=None) -> LayerGraph:
+        layer = LayerGraph(adjacency_list, nodes_yx, branch_labels)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
         return layer
 
     # --- Events handling ---
