@@ -268,37 +268,37 @@ class LayerLabel(Layer):
 
 
 class LayerGraph(Layer):
-    def __init__(self, adjacency_list, nodes_coordinates, branch_map=None, nodes_domain=None, nodes_cmap=None, branches_cmap=None):
+    def __init__(self, adjacency_list, nodes_coordinates, edge_map=None, nodes_domain=None, nodes_cmap=None, edges_cmap=None):
         super().__init__('graph')
-        self.set_graph(adjacency_list, nodes_coordinates, branch_map, nodes_domain)
+        self.set_graph(adjacency_list, nodes_coordinates, edge_map, nodes_domain)
         self.nodes_cmap = nodes_cmap
-        self.branches_cmap = branches_cmap
-        self.branches_opacity = 0.7
+        self.edges_cmap = edges_cmap
+        self.edges_opacity = 0.7
         self.node_labels_visible = False
-        self.branch_labels_visible = False
-        self.branch_as_edge = branch_map is None
+        self.edge_labels_visible = False
+        self.edge_as_edge = edge_map is None
 
-    def set_graph(self, adjacency_list, nodes_coordinates, branch_map=None, nodes_domains: Rect | None = None):
-        if nodes_domains is None and branch_map is not None:
-            nodes_domains = Rect.from_size(branch_map.shape)
+    def set_graph(self, adjacency_list, nodes_coordinates, edge_map=None, nodes_domains: Rect | None = None):
+        if nodes_domains is None and edge_map is not None:
+            nodes_domains = Rect.from_size(edge_map.shape)
         self._set_adjacency_list(adjacency_list, check_dim=False)
         self._set_nodes_coordinates(nodes_coordinates, nodes_domains)
-        self._set_branch_map(branch_map)
+        self._set_edge_map(edge_map)
         self._notify_data_change()
 
     def set_options(self, options: Dict[str, any], raise_on_error: bool = True):
         for k, v in options.items():
             if k == 'nodes_cmap':
                 self._options[k] = LayerLabel.check_label_colormap(v, null_label=False)
-            elif k == 'branches_cmap':
+            elif k == 'edges_cmap':
                 self._options[k] = LayerLabel.check_label_colormap(v, null_label=False)
-            elif k == 'branches_opacity':
+            elif k == 'edges_opacity':
                 self._options[k] = min(max(float(v), 0), 1)
             elif k == 'node_labels_visible':
                 self._options[k] = bool(v)
-            elif k == 'branch_labels_visible':
+            elif k == 'edge_labels_visible':
                 self._options[k] = bool(v)
-            elif k == 'branch_as_edge':
+            elif k == 'edge_as_edge':
                 self._options[k] = bool(v)
         super().set_options(options, raise_on_error)
 
@@ -320,9 +320,9 @@ class LayerGraph(Layer):
             if self.nodes_coordinates is not None:
                 assert adj.max() < self.nodes_coordinates.shape[0], \
                     f'Invalid adjacency list. {self.nodes_coordinates.shape[0]} nodes are expected.'
-            if self.branch_map is not None:
-                assert adj.shape[0] == self.branch_map.max(), \
-                    f'Invalid adjacency list. {self.branch_map.max()} branches are expected.'
+            if self.edge_map is not None:
+                assert adj.shape[0] == self.edge_map.max(), \
+                    f'Invalid adjacency list. {self.edge_map.max()} edges are expected.'
         self._adjacency_list = adj.astype(np.uint32)
 
     @property
@@ -344,44 +344,44 @@ class LayerGraph(Layer):
                     f'Invalid nodes coordinates shape {node_yx.shape}. ' \
                     f'Expected at least {self.adjacency_list.max()+1} nodes but got {node_yx.shape[0]}.'
         if nodes_domain is None:
-            if self.branch_map is not None:
-                nodes_domain = Rect.from_size(self._branch_map.shape)
+            if self.edge_map is not None:
+                nodes_domain = Rect.from_size(self._edge_map.shape)
             elif not Rect.is_empty(self._main_domain):
                 nodes_domain = self._main_domain
         self._nodes_coordinates = node_yx.astype(np.uint32)
         self._nodes_domain = nodes_domain
 
     @property
-    def branch_map(self) -> np.ndarray | None:
-        return getattr(self, '_branch_map', None)
+    def edge_map(self) -> np.ndarray | None:
+        return getattr(self, '_edge_map', None)
 
-    @branch_map.setter
-    def branch_map(self, data):
-        self._set_branch_map(data)
+    @edge_map.setter
+    def edge_map(self, data):
+        self._set_edge_map(data)
         self._notify_data_change()
 
-    def _set_branch_map(self, branch_label, check_dim=True):
-        if type(branch_label).__qualname__ == 'Tensor':
-            branch_label = branch_label.detach().cpu().numpy()
-        if branch_label is not None:
-            error = ValueError(f'Invalid branch map type {branch_label.dtype}. '
+    def _set_edge_map(self, edge_label, check_dim=True):
+        if type(edge_label).__qualname__ == 'Tensor':
+            edge_label = edge_label.detach().cpu().numpy()
+        if edge_label is not None:
+            error = ValueError(f'Invalid edge map type {edge_label.dtype}. '
                                f'Must be positive integer encoded on maximum 32 bits.')
-            if branch_label.ndim != 2:
+            if edge_label.ndim != 2:
                 raise error
-            elif branch_label.dtype.kind not in '?bBiu':
+            elif edge_label.dtype.kind not in '?bBiu':
                 raise error
-            elif np.min(branch_label) < 0 or np.max(branch_label) >= 2 ** 32:
+            elif np.min(edge_label) < 0 or np.max(edge_label) >= 2 ** 32:
                 raise error
             if check_dim:
                 if self.adjacency_list is not None:
-                    assert branch_label.max() == self.adjacency_list.shape[0], \
-                        f'Invalid branch label: maximum label is {branch_label.max()} ' \
-                        f'but adjacency list contains{self.adjacency_list.shape[0]} branches.'
-            self._branch_map = branch_label.astype(np.uint32)
+                    assert edge_label.max() == self.adjacency_list.shape[0], \
+                        f'Invalid edge label: maximum label is {edge_label.max()} ' \
+                        f'but adjacency list contains{self.adjacency_list.shape[0]} edges.'
+            self._edge_map = edge_label.astype(np.uint32)
             if self._nodes_domain is None:
-                self._nodes_domain = Rect.from_size(self._branch_map.shape)
+                self._nodes_domain = Rect.from_size(self._edge_map.shape)
         else:
-            self._branch_map = None
+            self._edge_map = None
 
     @property
     def nodes_cmap(self):
@@ -393,13 +393,13 @@ class LayerGraph(Layer):
         self.set_options({'nodes_cmap': cmap})
 
     @property
-    def branches_cmap(self):
+    def edges_cmap(self):
         """Get colormap as dict[int, str]."""
-        return self._options.get('branches_cmap', None)
+        return self._options.get('edges_cmap', None)
 
-    @branches_cmap.setter
-    def branches_cmap(self, cmap):
-        self.set_options({'branches_cmap': cmap})
+    @edges_cmap.setter
+    def edges_cmap(self, cmap):
+        self.set_options({'edges_cmap': cmap})
 
     @property
     def node_labels_visible(self):
@@ -410,28 +410,28 @@ class LayerGraph(Layer):
         self.set_options({'node_labels_visible': cmap})
 
     @property
-    def branch_labels_visible(self):
-        return self._options.get('branch_labels_visible', False)
+    def edge_labels_visible(self):
+        return self._options.get('edge_labels_visible', False)
 
-    @branch_labels_visible.setter
-    def branch_labels_visible(self, cmap):
-        self.set_options({'branch_labels_visible': cmap})
-
-    @property
-    def branch_as_edge(self):
-        return self._options.get('branch_as_edge', False)
-
-    @branch_as_edge.setter
-    def branch_as_edge(self, cmap):
-        self.set_options({'branch_as_edge': cmap})
+    @edge_labels_visible.setter
+    def edge_labels_visible(self, cmap):
+        self.set_options({'edge_labels_visible': cmap})
 
     @property
-    def branches_opacity(self):
-        return self._options.get('branches_opacity', 1.0)
+    def edge_as_edge(self):
+        return self._options.get('edge_as_edge', False)
 
-    @branches_opacity.setter
-    def branches_opacity(self, opacity):
-        self.set_options({'branches_opacity': opacity})
+    @edge_as_edge.setter
+    def edge_as_edge(self, cmap):
+        self.set_options({'edge_as_edge': cmap})
+
+    @property
+    def edges_opacity(self):
+        return self._options.get('edges_opacity', 1.0)
+
+    @edges_opacity.setter
+    def edges_opacity(self, opacity):
+        self.set_options({'edges_opacity': opacity})
 
     def set_main_shape(self, main_domain: Rect,
                        transform_domain: Transform | LayerDomain | None = None):
@@ -442,16 +442,16 @@ class LayerGraph(Layer):
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
         data = dict(adj=self._adjacency_list.astype(int).tolist(),
                     nodes_yx=self.nodes_coordinates.astype(float).tolist())
-        if self.branch_map is not None:
-            data['branchMap'] = LayerLabel.encode_label_url(self.branch_map)
+        if self.edge_map is not None:
+            data['edgeMap'] = LayerLabel.encode_label_url(self.edge_map)
         return LayerData(data=data, infos={'nbNodes': int(self._adjacency_list.max()) + 1,
                                            'nodesDomain': self._nodes_domain,})
 
     def _shape(self):
-        return self.branch_map.shape if self.branch_map is not None else self._nodes_domain
+        return self.edge_map.shape if self.edge_map is not None else self._nodes_domain
 
     def _fetch_item(self, x: int, y: int) -> dict:
-        return {'value': self.branch_map[y, x]}
+        return {'value': self.edge_map[y, x]}
 
     def _fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str, any]:
         return {}

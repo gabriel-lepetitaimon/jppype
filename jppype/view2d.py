@@ -85,8 +85,8 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         return layer
 
     def add_graph(self, adjacency_list: np.ndarray, nodes_yx: tuple[np.ndarray, np.ndarray],
-                  branch_labels: np.ndarray | None = None, name: str | None = None, options=None) -> LayerGraph:
-        layer = LayerGraph(adjacency_list, nodes_yx, branch_labels)
+                  edge_labels: np.ndarray | None = None, name: str | None = None, options=None) -> LayerGraph:
+        layer = LayerGraph(adjacency_list, nodes_yx, edge_labels)
         self.add_layer(layer, alias=name)
         if options is not None:
             layer.set_options(options)

@@ -116,8 +116,8 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     const { data, options, sceneDomain } = props;
     const { opacity } = options;
 
-    const branchCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    const branchesSvgRef = useRef<ReactElement[] | null>(null);
+    const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    const edgesSvgRef = useRef<ReactElement[] | null>(null);
 
     const adjList: number[][] = data.data.adj;
 
@@ -145,36 +145,36 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
         }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
     const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
-    const nbBranches = adjList.length;
-    const branchRGBACMap = useMemo(
-        () => cmap2RGBAlookup(nbBranches, options.branches_cmap),
-        [nbBranches, options.branches_cmap]);
+    const nbedges = adjList.length;
+    const edgeRGBACMap = useMemo(
+        () => cmap2RGBAlookup(nbedges, options.edges_cmap),
+        [nbedges, options.edges_cmap]);
 
-    const branchHexCMap = useMemo(
-        () => cmap2Hexlookup(nbBranches, options.branches_cmap),
-        [nbBranches, options.branches_cmap]);
+    const edgeHexCMap = useMemo(
+        () => cmap2Hexlookup(nbedges, options.edges_cmap),
+        [nbedges, options.edges_cmap]);
 
     useEffect(() => {
-      const canvas = branchCanvasRef.current;
+      const canvas = edgeCanvasRef.current;
       if (canvas == null) return;
       const ctx = canvas.getContext("2d");
       if (ctx == null) return;
 
-      if (data.data.branchMap == null || options.branch_as_edge) {
+      if (data.data.edgeMap == null || options.edge_as_edge) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        branchesSvgRef.current = adjList.map((nodes: number[], i: number) => {
+        edgesSvgRef.current = adjList.map((nodes: number[], i: number) => {
           const node1_yx = data.data.nodes_yx[nodes[0]];
           const node2_yx = data.data.nodes_yx[nodes[1]];
           const [y1, x1] = node1_yx;
           const [y2, x2] = node2_yx;
-          const color = branchHexCMap[i+1];
+          const color = edgeHexCMap[i+1];
           return <g key={i}>
                 <line x1={x1+0.5} y1={y1+0.5} x2={x2+0.5} y2={y2+0.5}
                        stroke={color} strokeWidth={3 / props.pixelSize}
-                        opacity={options.branches_opacity}>
+                        opacity={options.edges_opacity}>
                     <title> Edge {i} </title>
                 </line>
-              {options.branch_labels_visible
+              {options.edge_labels_visible
                   ? <text x={(x1+x2)/2 + 7/props.pixelSize} y={(y1+y2)/2 + 7/props.pixelSize} fill={color}
                           textDecoration={"overline"}
                       fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
@@ -182,24 +182,24 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
           </g>
         });
       } else {
-        branchesSvgRef.current = null;
-        drawLabels(canvas, data.data.branchMap, branchRGBACMap);
+        edgesSvgRef.current = null;
+        drawLabels(canvas, data.data.edgeMap, edgeRGBACMap);
       }
-    }, [options.branches_cmap,
-        (data.data.branchMap==null || options.branch_as_edge)
-            ? props.pixelSize+options.branches_opacity + (options.branch_labels_visible?100:0)
-            : data.data.branchMap])
+    }, [options.edges_cmap,
+        (data.data.edgeMap==null || options.edge_as_edge)
+            ? props.pixelSize+options.edges_opacity + (options.edge_labels_visible?100:0)
+            : data.data.edgeMap])
 
     const posStyle = positionStyle(options.domain, sceneDomain);
-    const pixelSize = options.domain.width/(branchCanvasRef.current?.width??options.domain.width) * props.pixelSize;
+    const pixelSize = options.domain.width/(edgeCanvasRef.current?.width??options.domain.width) * props.pixelSize;
 
     return (
         <>
           <canvas
-            ref={branchCanvasRef}
+            ref={edgeCanvasRef}
             style={{
               imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
-                opacity: options.branches_opacity * opacity,
+                opacity: options.edges_opacity * opacity,
               ...posStyle
             }}
         />
@@ -211,7 +211,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
                  ...posStyle
             }}
         >
-            {branchesSvgRef.current}
+            {edgesSvgRef.current}
             {nodes}
         </svg>
       </>);

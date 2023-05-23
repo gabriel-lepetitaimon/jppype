@@ -43,7 +43,7 @@ viewer
 - __Python interactivity__
   - [x] Add/Update/Remove layers
   - [x] Callback on click
-  - [ ] Async request of user selection (point, area, node, branch...) 
+  - [ ] Async request of user selection (point, area, node, edge...) 
 
 ## Development Installation
 
