@@ -268,9 +268,9 @@ class LayerLabel(Layer):
 
 
 class LayerGraph(Layer):
-    def __init__(self, adjacency_matrix, nodes_coordinates, branch_map=None, nodes_domain=None, nodes_cmap=None, branches_cmap=None):
+    def __init__(self, adjacency_list, nodes_coordinates, branch_map=None, nodes_domain=None, nodes_cmap=None, branches_cmap=None):
         super().__init__('graph')
-        self.set_graph(adjacency_matrix, nodes_coordinates, branch_map, nodes_domain)
+        self.set_graph(adjacency_list, nodes_coordinates, branch_map, nodes_domain)
         self.nodes_cmap = nodes_cmap
         self.branches_cmap = branches_cmap
         self.branches_opacity = 0.7
