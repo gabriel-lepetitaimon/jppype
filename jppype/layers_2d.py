@@ -375,8 +375,8 @@ class LayerGraph(Layer):
             if check_dim:
                 if self.adjacency_list is not None:
                     assert branch_label.max() == self.adjacency_list.shape[0]+1, \
-                        f'Invalid branch map shape {branch_label.shape}. ' \
-                        f'Expected {self.adjacency_list.max()} branches but got {branch_label.shape[0]}.'
+                        f'Invalid branch label: maximum label is {branch_label.max()} ' \
+                        f'but adjacency list contains{self.adjacency_list.shape[0]+1} branches.'
             self._branch_map = branch_label.astype(np.uint32)
             if self._nodes_domain is None:
                 self._nodes_domain = Rect.from_size(self._branch_map.shape)
