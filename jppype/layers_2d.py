@@ -274,7 +274,9 @@ class LayerGraph(Layer):
         self.nodes_cmap = nodes_cmap
         self.branches_cmap = branches_cmap
         self.branches_opacity = 0.7
-        self.display_node_labels = False
+        self.node_labels_visible = False
+        self.branch_labels_visible = False
+        self.branch_as_edge = branch_map is None
 
     def set_graph(self, adjacency_list, nodes_coordinates, branch_map=None, nodes_domains: Rect | None = None):
         if nodes_domains is None and branch_map is not None:
@@ -292,7 +294,11 @@ class LayerGraph(Layer):
                 self._options[k] = LayerLabel.check_label_colormap(v, null_label=False)
             elif k == 'branches_opacity':
                 self._options[k] = min(max(float(v), 0), 1)
-            elif k == 'display_node_labels':
+            elif k == 'node_labels_visible':
+                self._options[k] = bool(v)
+            elif k == 'branch_labels_visible':
+                self._options[k] = bool(v)
+            elif k == 'branch_as_edge':
                 self._options[k] = bool(v)
         super().set_options(options, raise_on_error)
 
@@ -368,7 +374,7 @@ class LayerGraph(Layer):
                 raise error
             if check_dim:
                 if self.adjacency_list is not None:
-                    assert branch_label.shape[0] == self.adjacency_list.max(), \
+                    assert branch_label.max() == self.adjacency_list.shape[0]+1, \
                         f'Invalid branch map shape {branch_label.shape}. ' \
                         f'Expected {self.adjacency_list.max()} branches but got {branch_label.shape[0]}.'
             self._branch_map = branch_label.astype(np.uint32)
@@ -396,12 +402,28 @@ class LayerGraph(Layer):
         self.set_options({'branches_cmap': cmap})
 
     @property
-    def display_node_labels(self):
-        return self._options.get('display_node_labels', False)
+    def node_labels_visible(self):
+        return self._options.get('node_labels_visible', False)
 
-    @display_node_labels.setter
-    def display_node_labels(self, cmap):
-        self.set_options({'display_node_labels': cmap})
+    @node_labels_visible.setter
+    def node_labels_visible(self, cmap):
+        self.set_options({'node_labels_visible': cmap})
+
+    @property
+    def branch_labels_visible(self):
+        return self._options.get('branch_labels_visible', False)
+
+    @branch_labels_visible.setter
+    def branch_labels_visible(self, cmap):
+        self.set_options({'branch_labels_visible': cmap})
+
+    @property
+    def branch_as_edge(self):
+        return self._options.get('branch_as_edge', False)
+
+    @branch_as_edge.setter
+    def branch_as_edge(self, cmap):
+        self.set_options({'branch_as_edge': cmap})
 
     @property
     def branches_opacity(self):

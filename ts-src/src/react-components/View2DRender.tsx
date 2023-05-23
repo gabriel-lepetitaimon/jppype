@@ -137,12 +137,12 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
                            stroke="white" strokeWidth={1/props.pixelSize}>
                 <title>Node {i}</title>
                 </circle>
-                {options.display_node_labels
+                {options.node_labels_visible
                     ? <text x={x+0.5+ 7/props.pixelSize} y={y+0.5+ 7/props.pixelSize} fill={color}
-                      fontSize={12/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
+                      fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
                     : undefined}
             </g>);
-        }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.display_node_labels]);
+        }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
     const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
     const nbBranches = adjList.length;
@@ -160,20 +160,35 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       const ctx = canvas.getContext("2d");
       if (ctx == null) return;
 
-      if (data.data.branchMap == null) {
+      if (data.data.branchMap == null || options.branch_as_edge) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         branchesSvgRef.current = adjList.map((nodes: number[], i: number) => {
           const node1_yx = data.data.nodes_yx[nodes[0]];
           const node2_yx = data.data.nodes_yx[nodes[1]];
-          return <line x1={node1_yx[1]+0.5} y1={node1_yx[0]+0.5} x2={node2_yx[1]+0.5} y2={node2_yx[0]+0.5}
-                       stroke={branchHexCMap[i+1]} key={i} strokeWidth={3 / props.pixelSize}
-                        opacity={options.branches_opacity}/>
+          const [y1, x1] = node1_yx;
+          const [y2, x2] = node2_yx;
+          const color = branchHexCMap[i+1];
+          return <g key={i}>
+                <line x1={x1+0.5} y1={y1+0.5} x2={x2+0.5} y2={y2+0.5}
+                       stroke={color} strokeWidth={3 / props.pixelSize}
+                        opacity={options.branches_opacity}>
+                    <title> Edge {i} </title>
+                </line>
+              {options.branch_labels_visible
+                  ? <text x={(x1+x2)/2 + 7/props.pixelSize} y={(y1+y2)/2 + 7/props.pixelSize} fill={color}
+                          textDecoration={"overline"}
+                      fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
+                    : undefined}
+          </g>
         });
       } else {
         branchesSvgRef.current = null;
         drawLabels(canvas, data.data.branchMap, branchRGBACMap);
       }
-    }, [data.data.branchMap, options.branches_cmap, data.data.branchMap ? null : props.pixelSize+options.branches_opacity])
+    }, [options.branches_cmap,
+        (data.data.branchMap==null || options.branch_as_edge)
+            ? props.pixelSize+options.branches_opacity + (options.branch_labels_visible?100:0)
+            : data.data.branchMap])
 
     const posStyle = positionStyle(options.domain, sceneDomain);
     const pixelSize = options.domain.width/(branchCanvasRef.current?.width??options.domain.width) * props.pixelSize;
@@ -196,8 +211,8 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
                  ...posStyle
             }}
         >
-          {nodes}
-          {branchesSvgRef.current}
+            {branchesSvgRef.current}
+            {nodes}
         </svg>
       </>);
 }
