@@ -35,7 +35,7 @@ viewer
   - [x] 2D image viewer
     - [x] Color images layer
     - [x] Label layer
-    - [ ] Graph layer
+    - [x] Graph layer
     - [ ] Vector Field layer
   - [ ] Table viewer
 
@@ -73,7 +73,7 @@ pip install -U jupyterlab
 
 Install the python package and the extensions in development mode (this stage may take a while as it will build the jupyterlab extension):
 ```bash
-pip install -e .
+pip install -e .[dev]
 jupyter nbextension install --py --symlink --overwrite --sys-prefix jppype
 jupyter nbextension enable --py --sys-prefix jppype
 ```
