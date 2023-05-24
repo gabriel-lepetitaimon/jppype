@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 import abc
-from ._version import NPM_PACKAGE_RANGE
+from ._version import __version__
 
 from ipywidgets import DOMWidget
 import traitlets
@@ -15,7 +15,7 @@ from traitlets import Unicode, Int
 Information about the frontend package of the ipywidgets.
 """
 module_name = "jppype"
-module_version = "0.1.0"
+module_version = __version__
 
 
 class BaseI3PWidget(DOMWidget):
