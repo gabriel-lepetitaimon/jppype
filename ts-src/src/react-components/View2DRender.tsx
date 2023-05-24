@@ -1,6 +1,6 @@
 import { LayerData, LayerOptions } from '../ipywidgets/JView2D';
 import {Rect} from "../utils/point";
-import {useEffect, useMemo, useRef, ReactElement} from "react";
+import {useEffect, useMemo, useRef, useLayoutEffect} from "react";
 import {CMapRGBA, cmap2RGBAlookup, cmap2Hexlookup} from "../utils/color";
 
 interface View2DRenderProps {
@@ -116,9 +116,6 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     const { data, options, sceneDomain } = props;
     const { opacity } = options;
 
-    const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    const edgesSvgRef = useRef<ReactElement[] | null>(null);
-
     const adjList: number[][] = data.data.adj;
 
     const nbNodes = data.infos.nbNodes;
@@ -145,50 +142,56 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
         }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
     const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
-    const nbedges = adjList.length;
+    const nbEdges = adjList.length;
     const edgeRGBACMap = useMemo(
-        () => cmap2RGBAlookup(nbedges, options.edges_cmap),
-        [nbedges, options.edges_cmap]);
+        () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
+        [nbEdges, options.edges_cmap]);
 
     const edgeHexCMap = useMemo(
-        () => cmap2Hexlookup(nbedges, options.edges_cmap),
-        [nbedges, options.edges_cmap]);
+        () => cmap2Hexlookup(nbEdges, options.edges_cmap),
+        [nbEdges, options.edges_cmap]);
 
-    useEffect(() => {
+    const displayEdgeMap = data.data.edgeMap != null && options.edge_map_visible;
+    const edges = useMemo( () => {
+        if (!displayEdgeMap) {
+            return adjList.map((nodes: number[], i: number) => {
+                const node1_yx = data.data.nodes_yx[nodes[0]];
+                const node2_yx = data.data.nodes_yx[nodes[1]];
+                const [y1, x1] = node1_yx;
+                const [y2, x2] = node2_yx;
+                const color = edgeHexCMap[i + 1];
+                return <g key={i}>
+                    <line x1={x1 + 0.5} y1={y1 + 0.5} x2={x2 + 0.5} y2={y2 + 0.5}
+                          stroke={color} strokeWidth={3 / props.pixelSize}
+                          opacity={options.edges_opacity}>
+                        <title> Edge {i} </title>
+                    </line>
+                    {options.edge_labels_visible
+                        ? <text x={(x1 + x2) / 2 + 7 / props.pixelSize} y={(y1 + y2) / 2 + 7 / props.pixelSize}
+                                fill={color}
+                                textDecoration={"overline"}
+                                fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
+                        : undefined}
+                </g>
+            });
+        } else {
+            return [];
+        }
+    }, [displayEdgeMap, props.pixelSize, options.edges_opacity, options.edge_labels_visible,  options.edges_cmap]);
+
+    const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+    useLayoutEffect(() => {
       const canvas = edgeCanvasRef.current;
       if (canvas == null) return;
       const ctx = canvas.getContext("2d");
       if (ctx == null) return;
 
-      if (data.data.edgeMap == null || !options.edge_map_visible) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        edgesSvgRef.current = adjList.map((nodes: number[], i: number) => {
-          const node1_yx = data.data.nodes_yx[nodes[0]];
-          const node2_yx = data.data.nodes_yx[nodes[1]];
-          const [y1, x1] = node1_yx;
-          const [y2, x2] = node2_yx;
-          const color = edgeHexCMap[i+1];
-          return <g key={i}>
-                <line x1={x1+0.5} y1={y1+0.5} x2={x2+0.5} y2={y2+0.5}
-                       stroke={color} strokeWidth={3 / props.pixelSize}
-                        opacity={options.edges_opacity}>
-                    <title> Edge {i} </title>
-                </line>
-              {options.edge_labels_visible
-                  ? <text x={(x1+x2)/2 + 7/props.pixelSize} y={(y1+y2)/2 + 7/props.pixelSize} fill={color}
-                          textDecoration={"overline"}
-                      fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
-                    : undefined}
-          </g>
-        });
-      } else {
-        edgesSvgRef.current = null;
+      if (displayEdgeMap) {
         drawLabels(canvas, data.data.edgeMap, edgeRGBACMap);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
       }
-    }, [options.edges_cmap,
-        (data.data.edgeMap==null || !options.edge_map_visible)
-            ? props.pixelSize+options.edges_opacity + (options.edge_labels_visible?100:0)
-            : data.data.edgeMap])
+    }, [displayEdgeMap, data.data.edgeMap,  options.edges_cmap])
 
     const posStyle = positionStyle(options.domain, sceneDomain);
     const pixelSize = options.domain.width/(edgeCanvasRef.current?.width??options.domain.width) * props.pixelSize;
@@ -211,7 +214,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
                  ...posStyle
             }}
         >
-            {edgesSvgRef.current}
+            {edges}
             {nodes}
         </svg>
       </>);
