@@ -26,10 +26,15 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
     _view_name = traitlets.Unicode('JView2D').tag(sync=True)
     _loading = traitlets.Bool(False).tag(sync=True)
 
-    def __init__(self):
+    def __init__(self, layers: Iterator[Layer] | Layer = ()):
         super(View2D, self).__init__()
         self.on_click = EventsDispatcher()
         self._transmit = FlagContext(self.__set_transmitting)
+
+        if isinstance(layers, Layer):
+            layers = (layers,)
+        for layer in layers:
+            self.add_layer(layer)
 
     # --- Implementation of LayersList abstract methods---
     def _send_new_layers(self, layers: Iterator[Layer]):
@@ -112,3 +117,10 @@ def imshow(image, vmax=None, vmin=None):
     viewer = View2D()
     viewer.add_image(image, vmax=vmax, vmin=vmin)
     return viewer
+
+
+def sync_views(*views: View2D):
+    import uuid
+    sync_uuid = uuid.uuid4().hex
+    for view in views:
+        view.linkedTransformGroup = sync_uuid

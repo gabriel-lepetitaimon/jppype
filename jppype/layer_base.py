@@ -117,6 +117,8 @@ class Layer(abc.ABC):
         self._domain_mode: DomainMode | None = None
         self._uuid = uuid4()
 
+
+
     def duplicate(self):
         layer = copy(self)
         layer._uuid = uuid4()
@@ -340,6 +342,10 @@ class Layer(abc.ABC):
             uuid = uuid4().hex
         self._on_options_change[uuid] = callback
         return DispatcherUnbind(self._on_options_change, uuid)
+
+    def _ipython_display_(self):
+        from .view2d import View2D
+        return View2D(self)
 
 
 # ======================================================================================================================
