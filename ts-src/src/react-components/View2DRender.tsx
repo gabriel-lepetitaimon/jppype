@@ -174,7 +174,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
                         opacity={options.edges_opacity}>
                     <title> Edge {i} </title>
                 </line>
-              {!options.edge_labels_visible
+              {options.edge_labels_visible
                   ? <text x={(x1+x2)/2 + 7/props.pixelSize} y={(y1+y2)/2 + 7/props.pixelSize} fill={color}
                           textDecoration={"overline"}
                       fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
