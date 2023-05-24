@@ -1,6 +1,8 @@
 .ImageViewerWidget{
-    height: 350px;
+    height: 100%;
+    min-height: 350px;
     width: 100%;
+    min-width: 350px;
 }
 
 .jp-LinkedOutputView .ImageViewerWidget{

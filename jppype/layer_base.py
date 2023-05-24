@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import abc
+import json
 from copy import copy
 from typing import Tuple, Dict, Protocol, Mapping, Iterable, Type, Literal, Callable, TypeGuard
 from uuid import uuid4
@@ -12,14 +13,15 @@ from .utils import call_matching_params, Rect, Point, Transform, FitMode, FIT_OP
 #   Utility class used by Layer and LayersList
 # ======================================================================================================================
 class LayerData:
-    def __init__(self, data: bytes, infos: dict = None, type: str = None):
+    def __init__(self, data: any, infos: dict = None, type: str = None):
         self.data = data
         self.type = type
         self.infos = infos
 
     def to_json_bytes(self) -> bytes:
         import json
-        return json.dumps(dict(data=self.data.decode('ascii'), type=self.type, infos=self.infos), ensure_ascii=True).encode('ascii')
+        return json.dumps(dict(data=self.data, type=self.type, infos=self.infos),
+                          indent=None, separators=(',', ':'), ensure_ascii=True).encode('ascii')
 
 
 class LayerDataChangeDispatcher(Protocol):
@@ -114,6 +116,8 @@ class Layer(abc.ABC):
         self._main_domain = Rect.empty()
         self._domain_mode: DomainMode | None = None
         self._uuid = uuid4()
+
+
 
     def duplicate(self):
         layer = copy(self)
@@ -237,13 +241,16 @@ class Layer(abc.ABC):
 
     @domain.setter
     def domain(self, value: LayerDomain | None):
+        shape = Rect.from_size(self.shape)
         match value:
             case value if value is None or Rect.is_empty(value):
-                value = Rect.from_size(self.shape).fit(self._main_domain, 'fit_width')
-                self._domain_mode = 'manual'
+                if not Rect.is_empty(shape):
+                    value = Rect.from_size(self.shape).fit(self._main_domain, 'fit_width')
+                    self._domain_mode = 'manual'
             case 'fit_height' | 'fit_width' | 'fit_inner' | 'fit_outer' | 'centered':
-                value = Rect.from_size(self.shape).fit(self._main_domain, value)
-                self._domain_mode = value
+                if not Rect.is_empty(shape):
+                    value = Rect.from_size(self.shape).fit(self._main_domain, value)
+                    self._domain_mode = value
             case _:
                 value = Rect(*value)
         self.set_options({'domain': value})
@@ -336,6 +343,12 @@ class Layer(abc.ABC):
         self._on_options_change[uuid] = callback
         return DispatcherUnbind(self._on_options_change, uuid)
 
+    def _ipython_display_(self):
+        from .view2d import View2D
+        from IPython.core.display import display
+
+        return display(View2D(self))
+
 
 # ======================================================================================================================
 #   Layer base class list
@@ -370,10 +383,10 @@ class LayersList(metaclass=abc.ABCMeta):
         """
         main_layer = False
         if alias is None:
-            i = 1
-            while f"Layer {i}" in self._layers_alias:
-                i += 1
-            alias = f"Layer {i}"
+            for i in range(1, len(self._layers) + 2):
+                alias = f"{layer.layer_type.title()} {i:02d}"
+                if alias not in self._layers_alias:
+                    break
         elif alias in self:
             main_layer = self[alias].uuid == self._main_layer
             self.remove_layer(alias)

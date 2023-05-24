@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jppype"
-version = "0.1.0"
+version = "0.1.1"
 description = "JupyterLab extension adding data visualisation widgets."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -51,10 +51,14 @@ build = [
     "build",
     "tbump"
 ]
+dev = ["jupyterlab~=4.0.0"]
 
 [project.urls]
 Homepage = " https://github.com/gabriel-lepetitaimon/jppype"
 Source = "https://github.com/gabriel-lepetitaimon/jppype"
+
+[tool.hatch.metadata]
+allow-direct-references = true
 
 [tool.hatch.build]
 artifacts = [

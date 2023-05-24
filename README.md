@@ -35,7 +35,7 @@ viewer
   - [x] 2D image viewer
     - [x] Color images layer
     - [x] Label layer
-    - [ ] Graph layer
+    - [x] Graph layer
     - [ ] Vector Field layer
   - [ ] Table viewer
 
@@ -43,7 +43,7 @@ viewer
 - __Python interactivity__
   - [x] Add/Update/Remove layers
   - [x] Callback on click
-  - [ ] Async request of user selection (point, area, node, branch...) 
+  - [ ] Async request of user selection (point, area, node, edge...) 
 
 ## Development Installation
 
@@ -59,9 +59,21 @@ conda create -n jppype python=3.10
 conda install -c conda-forge yarn nodejs
 ```
 
-Install the python package and the extensions in development mode:
+Download the npm dependencies:
 ```bash
-pip install -e .
+cd ts-src
+npm install
+cd ...
+```
+
+Upgrade jupyter-lab to version 4.0.0 if necessary:
+```bash
+pip install -U jupyterlab
+```
+
+Install the python package and the extensions in development mode (this stage may take a while as it will build the jupyterlab extension):
+```bash
+pip install -e .[dev]
 jupyter nbextension install --py --symlink --overwrite --sys-prefix jppype
 jupyter nbextension enable --py --sys-prefix jppype
 ```
@@ -79,7 +91,7 @@ jlpm build
 or automatically rebuild when a file changes:
 ```bash
 cd ts-src
-jlpm watch
+npm watch
 ```
 
 You then need to refresh the JupyterLab page when your javascript changes.

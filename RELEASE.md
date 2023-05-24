@@ -19,7 +19,6 @@ To release a new version of jppype on PyPI, first make sure that the `build` pac
 
 1. Update the release versions manually in `pyproject.toml`, `jppype/_version.py` and `ts-src/package.json`, or with:
    ```bash
-   ```bash
    tbump <new-version>
    ```
 2. Clean the repository and install npm package required for building the extension 

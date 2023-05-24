@@ -9,3 +9,7 @@
 .jp-LinkedOutputView .maximizing-widget{
   height: 100%;
 }
+
+.jp-LinkedOutputView .jp-OutputArea-output:has(.maximizing-widget) {
+  display: block;
+}
