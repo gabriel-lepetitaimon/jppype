@@ -345,7 +345,9 @@ class Layer(abc.ABC):
 
     def _ipython_display_(self):
         from .view2d import View2D
-        return View2D(self)
+        from rich.jupyter import display
+
+        return display(View2D(self))
 
 
 # ======================================================================================================================
