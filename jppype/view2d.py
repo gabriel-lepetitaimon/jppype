@@ -9,7 +9,7 @@ import numpy as np
 import json
 import traitlets
 from ._frontend import BaseI3PWidget, ABCHasTraitMeta
-from .layers_2d import LayerLabel, LayerImage
+from .layers_2d import LayerLabel, LayerImage, LayerGraph
 from .layer_base import LayersList, Layer
 from .utils import EventsDispatcher, FlagContext
 
@@ -26,10 +26,15 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
     _view_name = traitlets.Unicode('JView2D').tag(sync=True)
     _loading = traitlets.Bool(False).tag(sync=True)
 
-    def __init__(self):
+    def __init__(self, layers: Iterator[Layer] | Layer = ()):
         super(View2D, self).__init__()
         self.on_click = EventsDispatcher()
         self._transmit = FlagContext(self.__set_transmitting)
+
+        if isinstance(layers, Layer):
+            layers = (layers,)
+        for layer in layers:
+            self.add_layer(layer)
 
     # --- Implementation of LayersList abstract methods---
     def _send_new_layers(self, layers: Iterator[Layer]):
@@ -52,7 +57,6 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         current_data = self._layers_data.copy()
         for layer in layers:
             current_data[self.get_layers_alias(layer)] = layer.get_data().to_json_bytes()
-
         with self._transmit:
             self._layers_data = current_data
 
@@ -68,17 +72,29 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         self._loading = value
 
     # --- Specialized methods to add layers ---
-    def add_image(self, img, layer_name: str | None = None,
+    def add_image(self, img, name: str | None = None,
                   vmax: Literal['auto'] | float | None = 'auto', vmin: Literal['auto'] | float | None = 'auto',
-                  resize_buffer: Tuple[int, int] | int | None = None) -> LayerImage:
+                  resize_buffer: Tuple[int, int] | int | None = None,
+                  options=None) -> LayerImage:
         layer = LayerImage(img, vmax=vmax, vmin=vmin, resize_buffer=resize_buffer)
-        self.add_layer(layer, alias=layer_name)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
         return layer
 
-    def add_label(self, label, layer_name: str | None = None,
-                  colormap: str | None = None) -> LayerLabel:
+    def add_label(self, label, name: str | None = None, colormap: str | None = None, options=None) -> LayerLabel:
         layer = LayerLabel(label, colormap=colormap)
-        self.add_layer(layer, alias=layer_name)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
+        return layer
+
+    def add_graph(self, adjacency_list: np.ndarray, nodes_yx: tuple[np.ndarray, np.ndarray],
+                  edge_labels: np.ndarray | None = None, name: str | None = None, options=None) -> LayerGraph:
+        layer = LayerGraph(adjacency_list, nodes_yx, edge_labels)
+        self.add_layer(layer, alias=name)
+        if options is not None:
+            layer.set_options(options)
         return layer
 
     # --- Events handling ---
@@ -101,3 +117,10 @@ def imshow(image, vmax=None, vmin=None):
     viewer = View2D()
     viewer.add_image(image, vmax=vmax, vmin=vmin)
     return viewer
+
+
+def sync_views(*views: View2D):
+    import uuid
+    sync_uuid = uuid.uuid4().hex
+    for view in views:
+        view.linkedTransformGroup = sync_uuid
