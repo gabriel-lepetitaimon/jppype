@@ -463,7 +463,7 @@ function Tick(props: TickProps): JSX.Element {
 interface TickLabelProps {
   length: number;
   horizontal: boolean;
-  label: string;
+  label: string | number;
   labelAnchor?: 'before' | 'middle' | 'after';
   tickLength?: number;
   className?: string;
@@ -496,6 +496,10 @@ function TickLabel(props: TickLabelProps): JSX.Element {
     labelOffset = 3;
   }
 
+  const label: string = typeof props.label === 'number' ?
+        props.label.toFixed() : props.label;
+
+
   const textElement = (
       <text
           fontSize={fontSize}
@@ -508,7 +512,7 @@ function TickLabel(props: TickLabelProps): JSX.Element {
               : `translate(${textCenter}, ${labelOffset}) rotate(-90)`}
           style={style}
         >
-           {props.label}
+           {label}
         </text>) as JSX.Element;
 
 

@@ -48,15 +48,29 @@ class LayerImage(Layer):
 
         if self.vmin == 'auto':
             vmin = np.min(img)
-            if vmin < 0 < vmax and .75 < abs(vmax + vmin)/vmax < 1.25:
-                vmin = -vmax
-            elif abs(vmin) < abs(vmax) * .1 and vmax > 0:
-                vmin = 0
         else:
             vmin = self.vmin
 
-        if self.vmax == 'auto' and abs(vmax) < abs(vmin) * .1 and vmin < 0:
-            vmax = 0
+        if self.vmin == 'auto' and self.vmax == 'auto':
+            if vmin < 0 < vmax and 2/3 < -vmin/vmax < 3/2:
+                vmax = max(-vmin, vmax)
+                vmin = -vmax
+            elif vmax <= 1 and vmin >=0:
+                    vmax = 1
+                    vmin = 0
+            elif vmax > 0 and abs(vmin) < vmax * .1:
+                vmin = 0
+            elif vmin < 0 and abs(vmax) < abs(vmin) * .1:
+                vmax = 0
+
+        elif self.vmax == 'auto':
+            if vmin < 0 and abs(vmax) < abs(vmin) * .1:
+                vmax = 0
+            elif vmax <= 1 and vmin >=0:
+                vmax = 1
+        elif self.vmin == 'auto':
+            if vmax > 0 and abs(vmin) < vmax * .1:
+                vmin = 0
 
         if vmin is not None:
             img = img - np.min(img)
@@ -193,17 +207,8 @@ class LayerLabel(Layer):
         self._notify_options_change({'cmap': cmap})
 
     @staticmethod
-    def colormap_by_name(name='catppuccin'):
-        assert isinstance(name, str), f'Invalid colormap name {name}. Must be str.'
-        match name:
-            case 'catppuccin':
-                return ['#8caaee', '#99d1db', '#a6d189', '#ef9f76', '#e78284', '#f4b8e4', '#f2d5cf',
-                        '#babbf1', '#85c1dc', '#81c8be', '#e5c890', '#ea999c', '#ca9ee6', '#eebebe']
-            case _:
-                return [LayerLabel.check_color(name)]
-
-    @staticmethod
     def check_label_colormap(cmap, null_label=True) -> Dict[int, str]:
+        from utilities.color import colormap_by_name, check_color
         if not null_label and isinstance(cmap, dict):
             if None in cmap:
                 cmap[-1] = cmap.pop(None)
@@ -212,26 +217,15 @@ class LayerLabel(Layer):
             case list() | tuple():
                 cmap = {0: list(cmap)}
             case str():
-                cmap = {0: LayerLabel.colormap_by_name(cmap)}
+                cmap = {0: colormap_by_name(cmap)}
             case None:
-                cmap = {0: LayerLabel.colormap_by_name()}
+                cmap = {0: colormap_by_name()}
         if not isinstance(cmap, dict) or any(not isinstance(k, int) or not isinstance(v, str)
                                              for k, v in cmap.items() if k != 0):
             raise ValueError(f'Invalid colormap {cmap}. Must be dict[int, str].')
 
-        return {int(k): LayerLabel.check_color(v) if k != 0 else [LayerLabel.check_color(_) for _ in v]
+        return {int(k): check_color(v) if k != 0 else [check_color(_) for _ in v]
                 for k, v in cmap.items()}
-
-    @staticmethod
-    def check_color(color: str):
-        if re.match(r'^#(?:[0-9a-fA-F]{3,4}){1,2}$', color) is not None:
-            return color
-        else:
-            import webcolors
-            try:
-                return webcolors.name_to_hex(color)
-            except ValueError:
-                raise ValueError(f'Invalid color name {color}.')
 
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
         label = self._label_map
@@ -265,6 +259,58 @@ class LayerLabel(Layer):
 
         label = np.stack((red, green, blue, 255 - alpha), axis=-1)
         return LayerImage.encode_url(label, 'png')
+
+
+class LayerIntensityMap(Layer):
+    def __init__(self, map: np.ndarray, color_range):
+        from .utilities.color import ColorRange
+        super().__init__('intensity')
+        self.map = map
+        self._color_range = ColorRange(color_range)
+
+    @property
+    def map(self):
+        return self._map
+
+    @map.setter
+    def map(self, map):
+        assert isinstance(map, np.ndarray), f'Invalid map type {type(map)}. Must be numpy.ndarray.'
+        assert map.ndim == 2, f'Invalid map shape {map.shape}. Must be (H, W).'
+        self._map = map
+        self._notify_data_change()
+
+    @property
+    def color_range(self):
+        return self._color_range
+
+    @color_range.setter
+    def color_range(self, color_range):
+        assert isinstance(color_range, list) and len(color_range) == 2, f'Invalid color range {color_range}.'
+        self._options['color_range'] = color_range
+        self._notify_options_change({'color_range': color_range})
+
+    @staticmethod
+    def encode_intensity_url(label: np.ndarray) -> str:
+        label = label.astype(np.float32).tobytes()
+        alpha = (label >> 24).astype(np.uint8)
+        red = ((label >> 16) & 0xFF).astype(np.uint8)
+        green = ((label >> 8) & 0xFF).astype(np.uint8)
+        blue = (label & 0xFF).astype(np.uint8)
+
+        label = np.stack((red, green, blue, 255 - alpha), axis=-1)
+        return LayerImage.encode_url(label, 'png')
+
+    def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
+        map = self.map
+        if resize is not None:
+            map = LayerImage.fit_resize(map, resize, interpolation=cv2.INTER_NEAREST)
+        return LayerData(LayerIntensityMap.encode_intensity_url(map))
+
+    def _shape(self):
+        return self.map.shape if self.map is not None else (0, 0)
+
+    def _fetch_item(self, x: int, y: int) -> dict:
+        return {'value': self._map[y, x]}
 
 
 class LayerGraph(Layer):
