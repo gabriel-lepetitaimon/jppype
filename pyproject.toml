@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jppype"
-version = "0.1.1"
+version = "0.1.1.1"
 description = "JupyterLab extension adding data visualisation widgets."
 readme = "README.md"
 license = { file = "LICENSE" }
