@@ -51,7 +51,7 @@ build = [
     "build",
     "tbump"
 ]
-dev = ["jupyterlab~=4.0.0"]
+dev = ["jupyterlab~=4.0.0", "black", "ruff"]
 
 [project.urls]
 Homepage = " https://github.com/gabriel-lepetitaimon/jppype"
@@ -117,3 +117,17 @@ version_template = "{major}.{minor}.{patch}"
 [tool.tbump.git]
 message_template = "Bump to {new_version}"
 tag_template = "v{new_version}"
+
+
+[tool.black]
+line-length = 120
+
+[tool.ruff]
+# Enable flake8-bugbear (`B`) rules.
+select = ["E", "F", "B"]
+
+# Never enforce `E501` (line length violations).
+ignore = ["E501"]
+
+# Avoid trying to fix flake8-bugbear (`B`) violations.
+unfixable = ["B"]

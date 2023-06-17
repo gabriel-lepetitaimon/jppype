@@ -1,12 +1,12 @@
 from __future__ import annotations
 
 import abc
-import json
 from copy import copy
 from typing import Tuple, Dict, Protocol, Mapping, Iterable, Type, Literal, Callable, TypeGuard
 from uuid import uuid4
 
-from .utils import call_matching_params, Rect, Point, Transform, FitMode, FIT_OPTIONS, FIT_WIDTH
+from .utilities.geometric import Rect, Transform, FitMode, FIT_OPTIONS
+from .utilities.func import call_matching_params
 
 
 # ======================================================================================================================
@@ -20,16 +20,23 @@ class LayerData:
 
     def to_json_bytes(self) -> bytes:
         import json
-        return json.dumps(dict(data=self.data, type=self.type, infos=self.infos),
-                          indent=None, separators=(',', ':'), ensure_ascii=True).encode('ascii')
+
+        return json.dumps(
+            dict(data=self.data, type=self.type, infos=self.infos),
+            indent=None,
+            separators=(",", ":"),
+            ensure_ascii=True,
+        ).encode("ascii")
 
 
 class LayerDataChangeDispatcher(Protocol):
-    def __call__(self, layer: Layer): ...
+    def __call__(self, layer: Layer):
+        ...
 
 
 class LayerOptionsChangeDispatcher(Protocol):
-    def __call__(self, layer: Layer, options: Dict[str, any]): ...
+    def __call__(self, layer: Layer, options: Dict[str, any]):
+        ...
 
 
 class DispatcherUnbind:
@@ -45,7 +52,8 @@ class DispatcherUnbind:
 
 
 class LayerSelector(Protocol):
-    def __call__(self, name: str, layer: Layer) -> bool: ...
+    def __call__(self, name: str, layer: Layer) -> bool:
+        ...
 
 
 class ContextLock:
@@ -67,7 +75,7 @@ class ContextLock:
             self._flags.clear()
             self._locked = False
 
-    def add(self, flag: str, data = None):
+    def add(self, flag: str, data=None):
         if self._locked:
             if flag not in self._flags:
                 self._flags[flag] = set()
@@ -91,7 +99,7 @@ class ContextLock:
 
 
 LayerDomain = Rect | FitMode
-DomainMode = Literal['manual'] | FitMode
+DomainMode = Literal["manual"] | FitMode
 
 
 def is_domain(value: any) -> TypeGuard[LayerDomain]:
@@ -103,21 +111,20 @@ def is_domain(value: any) -> TypeGuard[LayerDomain]:
 # ======================================================================================================================
 class Layer(abc.ABC):
     def __init__(self, layer_type: str):
-        self._options = {'visible': True,
-                         'opacity': 1.0,
-                         'z_index': -1,
-                         'label': '',
-                         'auto_scale_domain': True,
-                         'domain': Rect.empty()
-                         }
+        self._options = {
+            "visible": True,
+            "opacity": 1.0,
+            "z_index": -1,
+            "label": "",
+            "auto_scale_domain": True,
+            "domain": Rect.empty(),
+        }
         self._layer_type = layer_type
         self._on_data_change: Dict[str, LayerDataChangeDispatcher] = {}
         self._on_options_change: Dict[str, LayerOptionsChangeDispatcher] = {}
         self._main_domain = Rect.empty()
         self._domain_mode: DomainMode | None = None
         self._uuid = uuid4()
-
-
 
     def duplicate(self):
         layer = copy(self)
@@ -151,93 +158,96 @@ class Layer(abc.ABC):
     def set_options(self, options: Dict[str, any], raise_on_error: bool = True):
         for k, v in options.items():
             match k:
-                case 'visible':
+                case "visible":
                     if not isinstance(v, bool):
                         if raise_on_error:
-                            raise ValueError(f'visible must be a bool, got {v}')
+                            raise ValueError(f"visible must be a bool, got {v}")
                         else:
                             continue
-                    self._options['visible'] = v
+                    self._options["visible"] = v
 
-                case 'opacity':
+                case "opacity":
                     if not isinstance(v, (int, float)):
                         try:
                             v = float(v)
                         except ValueError:
                             if raise_on_error:
-                                raise ValueError(f'opacity must be a number between 0 and 1, got {v}')
+                                raise ValueError(f"opacity must be a number between 0 and 1, got {v}") from None
                             else:
                                 continue
                     if not 0 <= v <= 1:
                         if raise_on_error:
-                            raise ValueError(f'opacity must be a number between 0 and 1, got {v}')
+                            raise ValueError(f"opacity must be a number between 0 and 1, got {v}")
                         else:
                             continue
-                    self._options['opacity'] = v
+                    self._options["opacity"] = v
 
-                case 'label':
+                case "label":
                     if not isinstance(v, str):
                         if raise_on_error:
-                            raise ValueError(f'label must be a string, got {v}')
+                            raise ValueError(f"label must be a string, got {v}")
                         else:
                             continue
-                    self._options['label'] = v
+                    self._options["label"] = v
 
-                case 'z_index':
+                case "z_index":
                     if not isinstance(v, (int, float)):
                         try:
                             v = float(v)
                         except ValueError:
                             if raise_on_error:
-                                raise ValueError(f'z_index must be a number, got {v}')
+                                raise ValueError(f"z_index must be a number, got {v}") from None
                             else:
                                 continue
-                    self._options['z_index'] = v
-                case 'domain':
-                    if not isinstance(v, (tuple, list)) or len(v) != 4 \
-                       or not all(isinstance(x, (int, float)) for x in v):
+                    self._options["z_index"] = v
+                case "domain":
+                    if (
+                        not isinstance(v, (tuple, list))
+                        or len(v) != 4
+                        or not all(isinstance(x, (int, float)) for x in v)
+                    ):
                         if raise_on_error:
-                            raise (ValueError(f'domain must be a tuple or list of 4 numbers, got {v}'))
+                            raise (ValueError(f"domain must be a tuple or list of 4 numbers, got {v}"))
                         else:
                             continue
-                    self._options['domain'] = tuple(v)
+                    self._options["domain"] = tuple(v)
         self._notify_options_change({k: self._options[k] for k in options.keys() if k in self._options})
 
     @property
     def visible(self) -> bool:
-        return self._options['visible']
+        return self._options["visible"]
 
     @visible.setter
     def visible(self, value: bool):
-        self.set_options({'visible': value})
+        self.set_options({"visible": value})
 
     @property
     def opacity(self) -> float:
-        return self._options['opacity']
+        return self._options["opacity"]
 
     @opacity.setter
     def opacity(self, value: float):
-        self.set_options({'opacity': value})
+        self.set_options({"opacity": value})
 
     @property
     def label(self) -> str:
-        return self._options['label']
+        return self._options["label"]
 
     @label.setter
     def label(self, value: str):
-        self.set_options({'label': value})
+        self.set_options({"label": value})
 
     @property
     def z_index(self) -> float:
-        return self._options['z_index']
+        return self._options["z_index"]
 
     @z_index.setter
     def z_index(self, value: float):
-        self.set_options({'z_index': value})
+        self.set_options({"z_index": value})
 
     @property
     def domain(self) -> Rect:
-        return Rect(*self._options['domain'])
+        return Rect(*self._options["domain"])
 
     @domain.setter
     def domain(self, value: LayerDomain | None):
@@ -245,15 +255,15 @@ class Layer(abc.ABC):
         match value:
             case value if value is None or Rect.is_empty(value):
                 if not Rect.is_empty(shape):
-                    value = Rect.from_size(self.shape).fit(self._main_domain, 'fit_width')
-                    self._domain_mode = 'manual'
-            case 'fit_height' | 'fit_width' | 'fit_inner' | 'fit_outer' | 'centered':
+                    value = Rect.from_size(self.shape).fit(self._main_domain, "fit_width")
+                    self._domain_mode = "manual"
+            case "fit_height" | "fit_width" | "fit_inner" | "fit_outer" | "centered":
                 if not Rect.is_empty(shape):
                     value = Rect.from_size(self.shape).fit(self._main_domain, value)
                     self._domain_mode = value
             case _:
                 value = Rect(*value)
-        self.set_options({'domain': value})
+        self.set_options({"domain": value})
 
     @property
     def domain_mode(self) -> FitMode | None:
@@ -261,15 +271,14 @@ class Layer(abc.ABC):
 
     @domain_mode.setter
     def domain_mode(self, value: FitMode):
-        raise AttributeError('domain_mode is read-only, use domain setter instead.')
+        raise AttributeError("domain_mode is read-only, use domain setter instead.")
 
-    def set_main_shape(self, main_domain: Rect,
-                       transform_domain: Transform | LayerDomain | None = None):
+    def set_main_shape(self, main_domain: Rect, transform_domain: Transform | LayerDomain | None = None):
         previous_domain = self._main_domain
         self._main_domain = main_domain
 
         match self.domain_mode:
-            case 'manual' | None:
+            case "manual" | None:
                 match transform_domain:
                     case None:
                         if main_domain is not None:
@@ -279,7 +288,7 @@ class Layer(abc.ABC):
                         self.domain = transform_domain(self.domain)
                     case transform_domain if is_domain(transform_domain):
                         self.domain = transform_domain
-            case 'fit_height' | 'fit_width' | 'fit_inner' | 'fit_outer' | 'centered':
+            case "fit_height" | "fit_width" | "fit_inner" | "fit_outer" | "centered":
                 self.domain = self.domain_mode
 
     # --- Fetch data methods ---
@@ -291,13 +300,13 @@ class Layer(abc.ABC):
             if r.type is None:
                 r.type = self._layer_type
             return r
-        raise TypeError(f'Invalid return type {type(r)}')
+        raise TypeError(f"Invalid return type {type(r)}")
 
     def fetch_item(self, **kwargs) -> dict:
         return call_matching_params(self._fetch_item, kwargs)
 
     def fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str | str]:
-        kwargs['rect'] = rect
+        kwargs["rect"] = rect
         return call_matching_params(self._fetch_graphs, kwargs)
 
     # --- Abstract methods ---
@@ -318,7 +327,8 @@ class Layer(abc.ABC):
         ...
 
     @abc.abstractmethod
-    def _shape(self) -> Tuple[int, int]: ...
+    def _shape(self) -> Tuple[int, int]:
+        ...
 
     # --- Communication method ---
     def _notify_data_change(self):
@@ -398,10 +408,10 @@ class LayersList(metaclass=abc.ABCMeta):
             layer = layer.duplicate()
 
         if layer.z_index == -1:
-            layer.z_index = max([l.z_index for l in self]+[0]) + 1
+            layer.z_index = max([layer.z_index for layer in self] + [0]) + 1
 
         if domain is None:
-            domain = layer.domain if layer.domain_mode == 'manual' else layer.domain_mode
+            domain = layer.domain if layer.domain_mode == "manual" else layer.domain_mode
 
         if self._main_layer is None:
             # If no main layer is set, the first layer added will be the main layer
@@ -410,7 +420,7 @@ class LayersList(metaclass=abc.ABCMeta):
             layer.domain = domain
             main_layer = True
         else:
-            layer.set_main_shape(self.main_layer.domain, 'fit_width' if domain is None else domain)
+            layer.set_main_shape(self.main_layer.domain, "fit_width" if domain is None else domain)
 
         self._layers[layer.uuid] = layer
         self._layers_alias[alias] = layer.uuid
@@ -423,7 +433,7 @@ class LayersList(metaclass=abc.ABCMeta):
     def remove_layer(self, layer: str | Layer | int):
         layer = self._item_to_layer(layer)
         if layer.uuid == self._main_layer:
-            self.main_layer = next((l for l in self if l.uuid != self._main_layer), None)
+            self.main_layer = next((layer for layer in self if layer.uuid != self._main_layer), None)
 
         self._send_delete_layers([layer])
         self._unbind_layer(layer)
@@ -439,7 +449,7 @@ class LayersList(metaclass=abc.ABCMeta):
     def update_options(self, layers_options: Mapping[str | Layer, Mapping[str, any]]):
         layers_options = {self[k] if isinstance(k, str) else k: v for k, v in layers_options.items()}
         with self._update_lock:
-            if self.main_layer in layers_options and 'domain' in layers_options[self.main_layer]:
+            if self.main_layer in layers_options and "domain" in layers_options[self.main_layer]:
                 self._update_main_layer_domain()
             for layer, opt in layers_options.items():
                 layer.set_options(opt)
@@ -494,10 +504,13 @@ class LayersList(metaclass=abc.ABCMeta):
                 if layer.uuid != self._main_layer:
                     layer.set_main_shape(new_domain, transform)
 
-    def get_layers(self, layers_selector: str | Layer | Iterable[str | Layer] | LayerSelector | None,
-                   only_visible=False, sort_zindex=False,
-                   layer_type: Type[Layer] | str | Iterable[Type[Layer] | str] | None = None
-                   ) -> list[Layer]:
+    def get_layers(
+        self,
+        layers_selector: str | Layer | Iterable[str | Layer] | LayerSelector | None,
+        only_visible=False,
+        sort_zindex=False,
+        layer_type: Type[Layer] | str | Iterable[Type[Layer] | str] | None = None,
+    ) -> list[Layer]:
         match layers_selector:
             case None:
                 layers = self._layers.values()
@@ -505,10 +518,10 @@ class LayersList(metaclass=abc.ABCMeta):
                 try:
                     layers = [self[layers_selector]]
                 except KeyError:
-                    raise ValueError(f'Unknown layer {layers_selector}')
+                    raise ValueError(f"Unknown layer {layers_selector}") from None
             case Layer():
                 if layers_selector not in self:
-                    raise ValueError(f'The provided layer is not in the list.')
+                    raise ValueError("The provided layer is not in the list.")
                 layers = [layers_selector]
             case LayerSelector():
                 layers = [layer for name, layer in self.items() if layers_selector(name, layer)]
@@ -520,17 +533,25 @@ class LayersList(metaclass=abc.ABCMeta):
         if layer_type is not None:
             if not isinstance(layer_type, tuple):
                 layer_type = (layer_type,)
-            layers = [layer for layer in layers if
-                      any(layer.layer_type == l_type if isinstance(l_type, str) else isinstance(layer, l_type)
-                          for l_type in layer_type)]
+            layers = [
+                layer
+                for layer in layers
+                if any(
+                    layer.layer_type == l_type if isinstance(l_type, str) else isinstance(layer, l_type)
+                    for l_type in layer_type
+                )
+            ]
         if sort_zindex:
-            layers.sort(key=lambda l: l.z_index)
+            layers.sort(key=lambda layer: layer.z_index)
         return layers
 
-    def get_layers_alias(self, layers: Layer | Iterable[Layer] | None = None,
-                         sort_zindex=False, only_visible=False,
-                         by_type: Type[Layer] | str | Iterable[Type[Layer] | str] | None = None
-                         ) -> str | list[str]:
+    def get_layers_alias(
+        self,
+        layers: Layer | Iterable[Layer] | None = None,
+        sort_zindex=False,
+        only_visible=False,
+        by_type: Type[Layer] | str | Iterable[Type[Layer] | str] | None = None,
+    ) -> str | list[str]:
         single_layer = isinstance(layers, Layer)
         layers = self.get_layers(layers, sort_zindex=sort_zindex, only_visible=only_visible, layer_type=by_type)
 
@@ -547,7 +568,7 @@ class LayersList(metaclass=abc.ABCMeta):
     def layers_domain(self) -> Rect:
         domain = Rect.empty()
         for layer in self:
-            domain = domain | Rect.from_size(layer.shape) if layer.domain == 'auto' else layer.domain
+            domain = domain | Rect.from_size(layer.shape) if layer.domain == "auto" else layer.domain
         return domain
 
     # --- Item and Iterables accessors ---
@@ -583,7 +604,7 @@ class LayersList(metaclass=abc.ABCMeta):
         return self._layers.values()
 
     def items(self):
-        return zip(self._layers_alias.keys(), self._layers.values())
+        return zip(self._layers_alias.keys(), self._layers.values(), strict=True)
 
     # --- Private methods for layer handling ---
     def _item_to_layer(self, item: int | str | Layer) -> Layer:
@@ -592,11 +613,11 @@ class LayersList(metaclass=abc.ABCMeta):
             return layers[item]
         elif isinstance(item, str):
             if item not in self._layers_alias:
-                raise KeyError(f'No layer named {item}.')
+                raise KeyError(f"No layer named {item}.")
             return self._layers[self._layers_alias[item]]
         elif isinstance(item, Layer):
             if item not in self:
-                raise KeyError(f'This layer is not part of the list.')
+                raise KeyError("This layer is not part of the list.")
             return item
 
     # --- Private methods for communication ---
@@ -604,7 +625,7 @@ class LayersList(metaclass=abc.ABCMeta):
         # Bind options events
         self._layers_binding[layer.uuid] = [
             layer.on_data_change(self.__update_layer_data),
-            layer.on_options_change(self.__update_layer_options)
+            layer.on_options_change(self.__update_layer_options),
         ]
 
     def _unbind_layer(self, layer: Layer):
@@ -615,19 +636,19 @@ class LayersList(metaclass=abc.ABCMeta):
         if not self._update_lock:
             self._send_update_layers_data([layer])
         else:
-            self._update_lock.add('data', layer)
+            self._update_lock.add("data", layer)
 
     def __update_layer_options(self, layer: Layer, options: Mapping[str, any]):
         if not self._update_lock:
             self._send_update_layers_options({layer: options})
         else:
-            self._update_lock.add('options', layer)
+            self._update_lock.add("options", layer)
 
     def __release_update_lock(self, updated: dict[str, set]):
-        if 'data' in updated:
-            self._send_update_layers_data(updated['data'])
-        elif 'options' in self._update_lock:
-            self._send_update_layers_options({layer: layer.options for layer in updated['options']})
+        if "data" in updated:
+            self._send_update_layers_data(updated["data"])
+        elif "options" in self._update_lock:
+            self._send_update_layers_options({layer: layer.options for layer in updated["options"]})
 
     # --- Abstract methods for communication ---
     @abc.abstractmethod

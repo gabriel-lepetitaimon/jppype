@@ -1,4 +1,7 @@
 
+from typing import Callable
+
+
 def colormap_by_name(name='catppuccin'):
     assert isinstance(name, str), f'Invalid colormap name {name}. Must be str.'
     match name:

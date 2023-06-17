@@ -1,8 +1,11 @@
 {
   "compilerOptions": {
     "declaration": true,
-    "esModuleInterop":true,
-    "lib": ["es2019", "DOM"],
+    "esModuleInterop": true,
+    "lib": [
+      "es2019",
+      "DOM"
+    ],
     "module": "commonjs",
     "moduleResolution": "node",
     "jsx": "react-jsx",
@@ -16,8 +19,18 @@
     "strict": true,
     "strictPropertyInitialization": false,
     "target": "es2015",
-    "types": ["resize-observer-browser"]
+    "types": [
+      "resize-observer-browser"
+    ]
   },
-  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.d.ts"],
-  "exclude": ["src/**/__tests__"]
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "src/**/*.d.ts",
+    "src/extension.js",
+    "src/extension.js"
+  ],
+  "exclude": [
+    "src/**/__tests__"
+  ]
 }

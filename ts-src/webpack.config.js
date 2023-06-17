@@ -7,7 +7,7 @@ const rules = [
     { test: /\.ts$/, loader: 'ts-loader' },
     { test: /\.[t|j]sx$/, loader: 'babel-loader' },
     { test: /\.js$/, loader: 'source-map-loader' },
-    { test: /\.css$/, use: ['style-loader', 'css-loader']}
+    { test: /\.css$/, use: ['style-loader', 'css-loader'] }
 ]
 
 
@@ -18,8 +18,8 @@ module.exports = (env, argv) => {
     const externals = ['@jupyter-widgets/base', 'module'];
 
     const resolve = {
-      // Add '.ts' and '.tsx' as resolvable extensions.
-      extensions: [".webpack.js", ".web.js", ".ts", ".js", '.tsx', 'jsx']
+        // Add '.ts' and '.tsx' as resolvable extensions.
+        extensions: [".webpack.js", ".web.js", ".ts", ".js", '.tsx', 'jsx']
     };
 
     return [
@@ -37,17 +37,17 @@ module.exports = (env, argv) => {
                 libraryTarget: 'amd',
             },
             module: {
-              rules: rules
+                rules: rules
             },
             devtool,
             externals,
             resolve,
         },
         {// Bundle for the notebook containing the custom widget views and models
-        //
-        // This bundle contains the implementation for the custom widget views and
-        // custom widget.
-        // It must be an amd module
+            //
+            // This bundle contains the implementation for the custom widget views and
+            // custom widget.
+            // It must be an amd module
             entry: ['./amd-public-path.js', './src/index.ts'],
             output: {
                 filename: 'index.js',
@@ -62,16 +62,16 @@ module.exports = (env, argv) => {
             externals,
             resolve,
         },
-          /**
-           * Embeddable jppype bundle
-           *
-           * This bundle is almost identical to the notebook extension bundle. The only
-           * difference is in the configuration of the webpack public path for the
-           * static assets.
-           *
-           * The target bundle is always `dist/index.ts`, which is the path required by
-           * the custom widget embedder.
-           */
+        /**
+         * Embeddable jppype bundle
+         *
+         * This bundle is almost identical to the notebook extension bundle. The only
+         * difference is in the configuration of the webpack public path for the
+         * static assets.
+         *
+         * The target bundle is always `dist/index.ts`, which is the path required by
+         * the custom widget embedder.
+         */
         {
             entry: ['./amd-public-path.js', './src/index.ts'],
             output: {

@@ -2,7 +2,7 @@ import { DOMWidgetModel, ISerializers } from '@jupyter-widgets/base';
 import React from 'react';
 import ImageViewerWidget from '../react-widgets/ImageViewer';
 import ReactDOM from 'react-dom';
-import {JBaseWidget, createUseModelState, JModel} from './jbasewidget';
+import { JBaseWidget, createUseModelState, JModel } from './jbasewidget';
 import { rect_serializer, transform_serializer } from './serializers';
 import { Transform } from '../utils/zoom-pan-handler';
 import { Point, Rect } from '../utils/point';
@@ -23,13 +23,16 @@ export class JView2D extends JBaseWidget {
       model: this.model as JView2DModel,
       events: {
         onClick: (ev) => {
+          const modifiers: string[] = [];
+          if (ev.altKey) modifiers.push('alt');
+          if (ev.metaKey) modifiers.push('meta');
+          if (ev.ctrlKey) modifiers.push('ctrl');
+          if (ev.shiftKey) modifiers.push('shift');
+
           this.send_event('onclick', {
             x: ev.cursor.x,
             y: ev.cursor.y,
-            altKey: ev.altKey,
-            metaKey: ev.metaKey,
-            ctrlKey: ev.ctrlKey,
-            shiftKey: ev.shiftKey,
+            modifiers: modifiers,
             button: ev.button,
           });
         },
@@ -85,8 +88,9 @@ export const layers_options_serializer = {
     const r: { [name: string]: LayerOptions } = {};
     for (const name in value) {
       const json = JSON.parse(value[name]);
-      r[name] = { ...json,
-                  domain: Rect.fromTuple(json['domain'])
+      r[name] = {
+        ...json,
+        domain: Rect.fromTuple(json['domain'])
       };
     }
     return r;
@@ -101,7 +105,7 @@ export class JView2DModel extends JModel {
     return defaultState;
   }
 
-  get layers_data(): {[name: string]: LayerData } {
+  get layers_data(): { [name: string]: LayerData } {
     return this.get('_layers_data');
   }
 
@@ -109,7 +113,7 @@ export class JView2DModel extends JModel {
     return this.get('linkedTransformGroup');
   }
 
-  get layers_options(): {[name: string]: LayerOptions } {
+  get layers_options(): { [name: string]: LayerOptions } {
     return this.get('_layers_options');
   }
 
@@ -132,7 +136,7 @@ export class JView2DModel extends JModel {
 export interface LayerData {
   type: string;
   data: any;
-  infos: {[key: string]: any};
+  infos: { [key: string]: any };
 }
 
 export interface LayerOptions {

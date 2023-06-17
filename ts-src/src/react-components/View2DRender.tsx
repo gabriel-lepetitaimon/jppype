@@ -1,7 +1,7 @@
 import { LayerData, LayerOptions } from '../ipywidgets/JView2D';
-import {Rect} from "../utils/point";
-import {useEffect, useMemo, useRef, useLayoutEffect} from "react";
-import {CMapRGBA, cmap2RGBAlookup, cmap2Hexlookup} from "../utils/color";
+import { Rect } from "../utils/point";
+import { useEffect, useMemo, useRef, useLayoutEffect } from "react";
+import { CMapRGBA, cmap2RGBAlookup, cmap2Hexlookup } from "../utils/color";
 
 interface View2DRenderProps {
   layers: { [name: string]: LayerData };
@@ -11,6 +11,7 @@ interface View2DRenderProps {
 }
 
 export default function View2DRender(props: View2DRenderProps) {
+  console.log('View2DRender', props);
   const zIndex: { name: string; zId: number }[] = [];
   for (const [name, opts] of Object.entries(props.options)) {
     if (name in props.layers && opts.visible) {
@@ -20,38 +21,46 @@ export default function View2DRender(props: View2DRenderProps) {
   zIndex.sort((a, b) => a.zId - b.zId);
   const layers = [];
 
+  console.log(zIndex);
+
   for (const name of zIndex.map((z) => z.name)) {
     const data = props.layers[name];
     const opt = props.options[name];
-    const pixelSize = props.scale * opt.domain.width/props.sceneDomain.width;
+    const pixelSize = props.scale * opt.domain.width / props.sceneDomain.width;
 
     switch (data.type) {
       case 'image':
+        console.log('image', opt);
         layers.push(
-            <ImageLayer
-              data={data}  options={opt}
-              sceneDomain={props.sceneDomain}
-              pixelSize={pixelSize}
-              key={name}
-            />);
+          <ImageLayer
+            data={data} options={opt}
+            sceneDomain={props.sceneDomain}
+            pixelSize={pixelSize}
+            key={name}
+          />);
+        console.log(' image done');
         break;
       case 'label':
+        console.log('label', opt);
         layers.push(
-            <LabelLayer
-              data={data}  options={opt}
-              sceneDomain={props.sceneDomain}
-              key={name}
-              pixelSize={pixelSize}
-            />);
+          <LabelLayer
+            data={data} options={opt}
+            sceneDomain={props.sceneDomain}
+            key={name}
+            pixelSize={pixelSize}
+          />);
+        console.log(' label done');
         break;
       case 'graph':
+        console.log('graph', opt);
         layers.push(
-            <GraphLayer
-                data={data}  options={opt}
-                sceneDomain={props.sceneDomain}
-                pixelSize={pixelSize}
-                key={name}
-            />);
+          <GraphLayer
+            data={data} options={opt}
+            sceneDomain={props.sceneDomain}
+            pixelSize={pixelSize}
+            key={name}
+          />);
+        console.log(' graph done');
         break;
     }
   }
@@ -64,7 +73,7 @@ function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
   const { data, options, sceneDomain } = props;
   const { opacity } = options;
 
-  const pixelSize = options.domain.width/data.infos.width * props.pixelSize;
+  const pixelSize = options.domain.width / data.infos.width * props.pixelSize;
 
   return (
     <img
@@ -79,167 +88,167 @@ function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
   );
 }
 
-function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number}) {
+function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
   const { data, options, sceneDomain } = props;
   const { opacity } = options;
 
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-    const cMap = useMemo(
-        () => cmap2RGBAlookup(data.infos.labels, options.cmap),
-        [data.infos.label, options.cmap]);
+  const cMap = useMemo(
+    () => cmap2RGBAlookup(data.infos.labels, options.cmap),
+    [data.infos.label, options.cmap]);
 
-    useEffect(() => {
-      const canvas = canvasRef.current;
-      if (canvas == null) return;
-      const ctx = canvas.getContext("2d");
-      if (ctx == null) return;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas == null) return;
+    const ctx = canvas.getContext("2d");
+    if (ctx == null) return;
 
-      drawLabels(canvas, data.data, cMap);
-    }, [data.data, options.cmap])
+    drawLabels(canvas, data.data, cMap);
+  }, [data.data, options.cmap])
 
-    const pixelSize = options.domain.width/(canvasRef.current?.width??options.domain.width) * props.pixelSize;
+  const pixelSize = options.domain.width / (canvasRef.current?.width ?? options.domain.width) * props.pixelSize;
 
-    return (
-        <canvas
-          ref={canvasRef}
-          style={{
-            opacity: opacity,
-            imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
-            ...positionStyle(options.domain, sceneDomain),
-          }}
-      />);
+  return (
+    <canvas
+      ref={canvasRef}
+      style={{
+        opacity: opacity,
+        imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
+        ...positionStyle(options.domain, sceneDomain),
+      }}
+    />);
 }
 
 
-function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number}) {
-    const { data, options, sceneDomain } = props;
-    const { opacity } = options;
+function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
+  const { data, options, sceneDomain } = props;
+  const { opacity } = options;
 
-    const adjList: number[][] = data.data.adj;
+  const adjList: number[][] = data.data.adj;
 
-    const nbNodes = data.infos.nbNodes;
-    const nodeCMap = useMemo(
-        () => cmap2Hexlookup(nbNodes, options.nodes_cmap),
-        [nbNodes, options.nodes_cmap]);
+  const nbNodes = data.infos.nbNodes;
+  const nodeCMap = useMemo(
+    () => cmap2Hexlookup(nbNodes, options.nodes_cmap),
+    [nbNodes, options.nodes_cmap]);
 
-    const nodes = useMemo(
-  () => data.data.nodes_yx.map((yx: [number, number], i: number) => {
-            const [y, x] = yx;
-            const color = nodeCMap[i+1];
+  const nodes = useMemo(
+    () => data.data.nodes_yx.map((yx: [number, number], i: number) => {
+      const [y, x] = yx;
+      const color = nodeCMap[i + 1];
 
-            return (
-            <g key={i}>
-                <circle cx={x+0.5} cy={y+0.5} r={4.5 / props.pixelSize} fill={color}
-                           stroke="white" strokeWidth={1/props.pixelSize}>
-                <title>Node {i}</title>
-                </circle>
-                {options.node_labels_visible
-                    ? <text x={x+0.5+ 7/props.pixelSize} y={y+0.5+ 7/props.pixelSize} fill={color}
-                      fontSize={13/props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
-                    : undefined}
-            </g>);
-        }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
-    const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
+      return (
+        <g key={i}>
+          <circle cx={x + 0.5} cy={y + 0.5} r={4.5 / props.pixelSize} fill={color}
+            stroke="white" strokeWidth={1 / props.pixelSize}>
+            <title>Node {i}</title>
+          </circle>
+          {options.node_labels_visible
+            ? <text x={x + 0.5 + 7 / props.pixelSize} y={y + 0.5 + 7 / props.pixelSize} fill={color}
+              fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
+            : undefined}
+        </g>);
+    }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
+  const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
-    const nbEdges = adjList.length;
-    const edgeRGBACMap = useMemo(
-        () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
-        [nbEdges, options.edges_cmap]);
+  const nbEdges = adjList.length;
+  const edgeRGBACMap = useMemo(
+    () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
+    [nbEdges, options.edges_cmap]);
 
-    const edgeHexCMap = useMemo(
-        () => cmap2Hexlookup(nbEdges, options.edges_cmap),
-        [nbEdges, options.edges_cmap]);
+  const edgeHexCMap = useMemo(
+    () => cmap2Hexlookup(nbEdges, options.edges_cmap),
+    [nbEdges, options.edges_cmap]);
 
-    const displayEdgeMap = data.data.edgeMap != null && options.edge_map_visible;
-    const edges = useMemo( () => {
-        if (!displayEdgeMap) {
-            return adjList.map((nodes: number[], i: number) => {
-                const node1_yx = data.data.nodes_yx[nodes[0]];
-                const node2_yx = data.data.nodes_yx[nodes[1]];
-                const [y1, x1] = node1_yx;
-                const [y2, x2] = node2_yx;
-                const color = edgeHexCMap[i + 1];
-                return <g key={i}>
-                    <line x1={x1 + 0.5} y1={y1 + 0.5} x2={x2 + 0.5} y2={y2 + 0.5}
-                          stroke={color} strokeWidth={3 / props.pixelSize}
-                          opacity={options.edges_opacity}>
-                        <title> Edge {i} </title>
-                    </line>
-                    {options.edge_labels_visible
-                        ? <text x={(x1 + x2) / 2 + 7 / props.pixelSize} y={(y1 + y2) / 2 + 7 / props.pixelSize}
-                                fill={color}
-                                textDecoration={"overline"}
-                                fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
-                        : undefined}
-                </g>
-            });
-        } else {
-            return [];
-        }
-    }, [displayEdgeMap, props.pixelSize, options.edges_opacity, options.edge_labels_visible,  options.edges_cmap]);
+  const displayEdgeMap = data.data.edgeMap != null && options.edge_map_visible;
+  const edges = useMemo(() => {
+    if (!displayEdgeMap) {
+      return adjList.map((nodes: number[], i: number) => {
+        const node1_yx = data.data.nodes_yx[nodes[0]];
+        const node2_yx = data.data.nodes_yx[nodes[1]];
+        const [y1, x1] = node1_yx;
+        const [y2, x2] = node2_yx;
+        const color = edgeHexCMap[i + 1];
+        return <g key={i}>
+          <line x1={x1 + 0.5} y1={y1 + 0.5} x2={x2 + 0.5} y2={y2 + 0.5}
+            stroke={color} strokeWidth={3 / props.pixelSize}
+            opacity={options.edges_opacity}>
+            <title> Edge {i} </title>
+          </line>
+          {options.edge_labels_visible
+            ? <text x={(x1 + x2) / 2 + 7 / props.pixelSize} y={(y1 + y2) / 2 + 7 / props.pixelSize}
+              fill={color}
+              textDecoration={"overline"}
+              fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
+            : undefined}
+        </g>
+      });
+    } else {
+      return [];
+    }
+  }, [displayEdgeMap, props.pixelSize, options.edges_opacity, options.edge_labels_visible, options.edges_cmap]);
 
-    const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
-    useLayoutEffect(() => {
-      const canvas = edgeCanvasRef.current;
-      if (canvas == null) return;
-      const ctx = canvas.getContext("2d");
-      if (ctx == null) return;
+  const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  useLayoutEffect(() => {
+    const canvas = edgeCanvasRef.current;
+    if (canvas == null) return;
+    const ctx = canvas.getContext("2d");
+    if (ctx == null) return;
 
-      if (displayEdgeMap) {
-        drawLabels(canvas, data.data.edgeMap, edgeRGBACMap);
-      } else {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
-    }, [displayEdgeMap, data.data.edgeMap,  options.edges_cmap])
+    if (displayEdgeMap) {
+      drawLabels(canvas, data.data.edgeMap, edgeRGBACMap);
+    } else {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }
+  }, [displayEdgeMap, data.data.edgeMap, options.edges_cmap])
 
-    const posStyle = positionStyle(options.domain, sceneDomain);
-    const pixelSize = options.domain.width/(edgeCanvasRef.current?.width??options.domain.width) * props.pixelSize;
+  const posStyle = positionStyle(options.domain, sceneDomain);
+  const pixelSize = options.domain.width / (edgeCanvasRef.current?.width ?? options.domain.width) * props.pixelSize;
 
-    return (
-        <>
-          <canvas
-            ref={edgeCanvasRef}
-            style={{
-              imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
-                opacity: options.edges_opacity * opacity,
-              ...posStyle
-            }}
-        />
-        <svg xmlns={'http://www.w3.org/2000/svg'}
-             viewBox={`${nodesDomain.left} ${nodesDomain.top} ${nodesDomain.width} ${nodesDomain.height}`}
-             preserveAspectRatio={'none'}
-             style={{
-                 opacity: opacity,
-                 ...posStyle
-            }}
-        >
-            {edges}
-            {nodes}
-        </svg>
-      </>);
+  return (
+    <>
+      <canvas
+        ref={edgeCanvasRef}
+        style={{
+          imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
+          opacity: options.edges_opacity * opacity,
+          ...posStyle
+        }}
+      />
+      <svg xmlns={'http://www.w3.org/2000/svg'}
+        viewBox={`${nodesDomain.left} ${nodesDomain.top} ${nodesDomain.width} ${nodesDomain.height}`}
+        preserveAspectRatio={'none'}
+        style={{
+          opacity: opacity,
+          ...posStyle
+        }}
+      >
+        {edges}
+        {nodes}
+      </svg>
+    </>);
 }
 
-function positionStyle(domain: Rect, sceneDomain: Rect): React.CSSProperties{
+function positionStyle(domain: Rect, sceneDomain: Rect): React.CSSProperties {
   return {
-    top: `${(domain.top - sceneDomain.top)/sceneDomain.height * 100}%`,
-    left: `${(domain.left - sceneDomain.left)/sceneDomain.width * 100}%`,
-    width: `${domain.width/sceneDomain.width * 100}%`,
-    height: `${domain.height/sceneDomain.height * 100}%`,
+    top: `${(domain.top - sceneDomain.top) / sceneDomain.height * 100}%`,
+    left: `${(domain.left - sceneDomain.left) / sceneDomain.width * 100}%`,
+    width: `${domain.width / sceneDomain.width * 100}%`,
+    height: `${domain.height / sceneDomain.height * 100}%`,
     position: 'absolute',
   };
 }
 
 
-function colorizeLabelInplace(imageData: ImageData, cmapLookup: CMapRGBA){
+function colorizeLabelInplace(imageData: ImageData, cmapLookup: CMapRGBA) {
   for (let i = 0; i < imageData.data.length; i += 4) {
     const v = imageData.data[i]
-        | (imageData.data[i + 1] << 8)
-        | (imageData.data[i + 2] << 16)
-        | ((255 - imageData.data[i + 3]) << 24);
+      | (imageData.data[i + 1] << 8)
+      | (imageData.data[i + 2] << 16)
+      | ((255 - imageData.data[i + 3]) << 24);
 
     if (v == 0) {
-      imageData.data[i+3] = 0;
+      imageData.data[i + 3] = 0;
       continue;
     }
 

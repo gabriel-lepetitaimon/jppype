@@ -1,77 +1,5 @@
 from __future__ import annotations
-import inspect
-from typing import Mapping, Protocol, overload, Literal, TypeGuard
-
-
-def call_matching_params(method, args=None, kwargs=None):
-    """
-    Call the specified method, matching the arguments it needs with those,
-    provided in kwargs. The useless arguments are ignored.
-    If some not optional arguments is missing, a ValueError exception is raised.
-    :param method: The method to call
-    :param kwargs: Parameters provided to method
-    :return: Whatever is returned by method (might be None)
-    """
-    method_params = {}
-    if kwargs:
-        method_params = inspect.signature(method).parameters.keys()
-        method_params = {_: kwargs[_] for _ in method_params & kwargs.keys()}
-
-    if args is None:
-        args = []
-    i_args = 0
-    for not_opt in not_optional_args(method):
-        if not_opt not in method_params:
-            if i_args < len(args):
-                method_params[not_opt] = args[i_args]
-                i_args += 1
-            else:
-                raise ValueError('%s is not optional to call method: %s.' % (not_opt, method))
-
-    return method(**method_params)
-
-
-def not_optional_args(f):
-    """
-    List all the parameters not optional of a method
-    :param f: The method to analise
-    :return: The list of parameters
-    :rtype: list
-    """
-    sig = inspect.signature(f)
-    return [p_name for p_name, p in sig.parameters.items() if p.default is inspect.Parameter.empty]
-
-
-class EventsDispatcher:
-    def __init__(self):
-        self._cb = []
-
-    def __call__(self, cb):
-        cb.unsub = self.subscribe(cb)
-        return cb
-
-    def dispatch(self, *args, **kwargs):
-        for cb in self._cb:
-            call_matching_params(cb, args=args, kwargs=kwargs)
-
-    def subscribe(self, cb):
-        self._cb.append(cb)
-
-        def unsubscribe():
-            self.unsubscribe(cb)
-        return unsubscribe
-
-    def unsubscribe(self, cb):
-        self._cb.remove(cb)
-
-
-def dict_recursive_update(d1: dict, d2: Mapping) -> Mapping:
-    for k, v in d2.items():
-        if isinstance(v, Mapping):
-            d1[k] = dict_recursive_update(d1.get(k, {}), v)
-        else:
-            d1[k] = v
-    return d1
+from typing import overload, Literal, TypeGuard
 
 
 class Transform:
@@ -81,13 +9,16 @@ class Transform:
         self._origin = origin
 
     @overload
-    def __call__(self, p: tuple) -> tuple: ...
+    def __call__(self, p: tuple) -> tuple:
+        ...
 
     @overload
-    def __call__(self, p: Point) -> Point: ...
+    def __call__(self, p: Point) -> Point:
+        ...
 
     @overload
-    def __call__(self, p: Rect) -> Rect: ...
+    def __call__(self, p: Rect) -> Rect:
+        ...
 
     def __call__(self, p: tuple | Point | Rect) -> tuple | Point | Rect:
         if isinstance(p, tuple):
@@ -97,13 +28,15 @@ class Transform:
                 case 4:
                     p = Rect(*p)
                 case _:
-                    raise TypeError('Only transformation of point (2-items tuple) or rect (4-items tuple) are supported')
+                    raise TypeError(
+                        "Only transformation of point (2-items tuple) or rect (4-items tuple) are supported"
+                    )
         if isinstance(p, Rect):
             return Rect.from_points(self(p.top_left), self(p.bottom_right))
         elif isinstance(p, Point):
             return (p - self._origin) * self._scale + self._translate
         else:
-            raise TypeError('Only Rect and Point are supported')
+            raise TypeError("Only Rect and Point are supported")
 
     @property
     def translate(self) -> Point:
@@ -128,19 +61,19 @@ class Transform:
         elif origin.h != 0:
             ratio = target.h / origin.h
         else:
-            raise ValueError('Origin rect cannot be empty')
+            raise ValueError("Origin rect cannot be empty")
         return Transform(offset, ratio, src.top_left)
 
 
-FIT_WIDTH = 'fit_width'
-FIT_HEIGHT = 'fit_height'
-FIT_INNER = 'fit_inner'
-FIT_OUTER = 'fit_outer'
-CENTERED = 'centered'
+FIT_WIDTH = "fit_width"
+FIT_HEIGHT = "fit_height"
+FIT_INNER = "fit_inner"
+FIT_OUTER = "fit_outer"
+CENTERED = "centered"
 
 FIT_OPTIONS = (FIT_WIDTH, FIT_HEIGHT, FIT_INNER, FIT_OUTER, CENTERED)
 
-FitMode = Literal['fit_width', 'fit_height', 'fit_inner', 'fit_outer', 'centered']
+FitMode = Literal["fit_width", "fit_height", "fit_inner", "fit_outer", "centered"]
 
 
 class Rect(tuple):
@@ -218,19 +151,21 @@ class Rect(tuple):
 
     def __or__(self, other):
         if isinstance(other, Rect):
-            return Rect.from_points((max(self.y + self.h, other.y + other.h),
-                                     max(self.x + self.w, other.x + other.w)),
-                                    (min(self.y, other.y), min(self.x, other.x)))
+            return Rect.from_points(
+                (max(self.y + self.h, other.y + other.h), max(self.x + self.w, other.x + other.w)),
+                (min(self.y, other.y), min(self.x, other.x)),
+            )
         else:
-            raise TypeError('Rect can only be combined only with another Rect')
+            raise TypeError("Rect can only be combined only with another Rect")
 
     def __and__(self, other):
         if isinstance(other, Rect):
-            return Rect.from_points((min(self.y + self.h, other.y + other.h),
-                                     min(self.x + self.w, other.x + other.w)),
-                                    (max(self.y, other.y), max(self.x, other.x)))
+            return Rect.from_points(
+                (min(self.y + self.h, other.y + other.h), min(self.x + self.w, other.x + other.w)),
+                (max(self.y, other.y), max(self.x, other.x)),
+            )
         else:
-            raise TypeError('Rect can only be combined only with another Rect')
+            raise TypeError("Rect can only be combined only with another Rect")
 
     def translate(self, y: float, x: float):
         return Rect(self.w, self.h, self.y + y, self.x + x)
@@ -247,13 +182,13 @@ class Rect(tuple):
             case (h, w, y, x):
                 other = Rect(h, w, y, x)
         match mode:
-            case 'fit_outer':
+            case "fit_outer":
                 ratio = max(other.w / self.w, other.h / self.h)
-            case 'fit_inner':
+            case "fit_inner":
                 ratio = min(other.w / self.w, other.h / self.h)
-            case 'fit_width':
+            case "fit_width":
                 ratio = other.w / self.w
-            case 'fit_height':
+            case "fit_height":
                 ratio = other.h / self.h
             case _:
                 ratio = 1
@@ -291,24 +226,3 @@ class Point(tuple):
 
     def __truediv__(self, other: float):
         return Point(self.y / other, self.x / other)
-
-
-class FlagContextSetFlag(Protocol):
-    def __call__(self, flag_value: bool): ...
-
-
-class FlagContext:
-    def __init__(self, set_flag: FlagContextSetFlag, value_on_enter=True):
-        self.set_flag = set_flag
-        self.value_on_enter = value_on_enter
-        self.enter_count = 0
-
-    def __enter__(self):
-        if self.enter_count == 0:
-            self.set_flag(self.value_on_enter)
-        self.enter_count += 1
-
-    def __exit__(self, exc_type, exc_val, exc_tb):
-        self.enter_count -= 1
-        if self.enter_count == 0:
-            self.set_flag(not self.value_on_enter)
