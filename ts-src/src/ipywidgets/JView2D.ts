@@ -142,6 +142,7 @@ export interface LayerData {
 export interface LayerOptions {
   visible: boolean;
   opacity: number;
+  blend_mode: string;
   z_index: number;
   label: string;
   auto_scale_domain: boolean;

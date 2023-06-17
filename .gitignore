@@ -24,3 +24,4 @@ ts-src/.pnp.*
 
 # IDE
 .idea/
+.vscode/settings.json

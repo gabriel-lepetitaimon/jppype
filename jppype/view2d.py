@@ -1,19 +1,19 @@
 #!/usr/bin/env python
 # coding: utf-8
-from typing import Mapping, Literal, Tuple, Iterator
+import json
 
 # Copyright (c) Gabriel Lepetit-Aimon.
 # Distributed under the terms of the Modified BSD License.
+from typing import Iterator, Literal, Mapping, Tuple
 
-from asyncio import Future
 import numpy as np
-import json
 import traitlets
-from ._frontend import BaseI3PWidget, ABCHasTraitMeta
-from .layers_2d import LayerLabel, LayerImage, LayerGraph
-from .layer_base import LayersList, Layer
+
+from ._frontend import ABCHasTraitMeta, BaseI3PWidget
+from .layer_base import Layer, LayersList
+from .layers_2d import LayerGraph, LayerImage, LayerLabel
+from .utilities.event import ClickEvent, EventsDispatcher
 from .utilities.func import FlagContext
-from .utilities.event import EventsDispatcher, ClickEvent
 
 
 class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
@@ -85,18 +85,23 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         vmin: Literal["auto"] | float | None = "auto",
         resize_buffer: Tuple[int, int] | int | None = None,
         options=None,
+        **opts,
     ) -> LayerImage:
         layer = LayerImage(img, vmax=vmax, vmin=vmin, resize_buffer=resize_buffer)
         self.add_layer(layer, alias=name)
-        if options is not None:
-            layer.set_options(options)
+        opts.update(options or {})
+        if opts:
+            layer.set_options(opts)
         return layer
 
-    def add_label(self, label, name: str | None = None, colormap: str | None = None, options=None) -> LayerLabel:
+    def add_label(
+        self, label, name: str | None = None, colormap: str | None = None, options=None, **opts
+    ) -> LayerLabel:
         layer = LayerLabel(label, colormap=colormap)
         self.add_layer(layer, alias=name)
-        if options is not None:
-            layer.set_options(options)
+        opts.update(options or {})
+        if opts:
+            layer.set_options(opts)
         return layer
 
     def add_graph(
@@ -106,11 +111,13 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         edge_labels: np.ndarray | None = None,
         name: str | None = None,
         options=None,
+        **opts,
     ) -> LayerGraph:
         layer = LayerGraph(adjacency_list, nodes_yx, edge_labels)
         self.add_layer(layer, alias=name)
-        if options is not None:
-            layer.set_options(options)
+        opts.update(options or {})
+        if opts:
+            layer.set_options(opts)
         return layer
 
     # --- Events handling ---

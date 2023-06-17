@@ -71,7 +71,6 @@ export default function View2DRender(props: View2DRenderProps) {
 
 function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
   const { data, options, sceneDomain } = props;
-  const { opacity } = options;
 
   const pixelSize = options.domain.width / data.infos.width * props.pixelSize;
 
@@ -80,9 +79,8 @@ function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       src={data.data}
       alt={options.label}
       style={{
-        opacity: opacity,
         imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
-        ...positionStyle(options.domain, sceneDomain),
+        ...getLayerStyle(options, sceneDomain),
       }}
     />
   );
@@ -90,7 +88,6 @@ function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
 
 function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
   const { data, options, sceneDomain } = props;
-  const { opacity } = options;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -113,9 +110,8 @@ function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     <canvas
       ref={canvasRef}
       style={{
-        opacity: opacity,
         imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
-        ...positionStyle(options.domain, sceneDomain),
+        ...getLayerStyle(options, sceneDomain),
       }}
     />);
 }
@@ -202,7 +198,7 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     }
   }, [displayEdgeMap, data.data.edgeMap, options.edges_cmap])
 
-  const posStyle = positionStyle(options.domain, sceneDomain);
+  const layerStyle = getLayerStyle(options, sceneDomain);
   const pixelSize = options.domain.width / (edgeCanvasRef.current?.width ?? options.domain.width) * props.pixelSize;
 
   return (
@@ -210,18 +206,15 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
       <canvas
         ref={edgeCanvasRef}
         style={{
+          ...layerStyle,
           imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
           opacity: options.edges_opacity * opacity,
-          ...posStyle
         }}
       />
       <svg xmlns={'http://www.w3.org/2000/svg'}
         viewBox={`${nodesDomain.left} ${nodesDomain.top} ${nodesDomain.width} ${nodesDomain.height}`}
         preserveAspectRatio={'none'}
-        style={{
-          opacity: opacity,
-          ...posStyle
-        }}
+        style={layerStyle}
       >
         {edges}
         {nodes}
@@ -229,13 +222,19 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     </>);
 }
 
-function positionStyle(domain: Rect, sceneDomain: Rect): React.CSSProperties {
+function getLayerStyle(options: LayerOptions, sceneDomain: Rect): React.CSSProperties {
+  const { domain, opacity, visible, blend_mode } = options;
+
+
+
   return {
     top: `${(domain.top - sceneDomain.top) / sceneDomain.height * 100}%`,
     left: `${(domain.left - sceneDomain.left) / sceneDomain.width * 100}%`,
     width: `${domain.width / sceneDomain.width * 100}%`,
     height: `${domain.height / sceneDomain.height * 100}%`,
     position: 'absolute',
+    mixBlendMode: blend_mode as any,
+    opacity: opacity * (visible ? 1 : 0),
   };
 }
 

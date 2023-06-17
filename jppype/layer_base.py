@@ -2,11 +2,22 @@ from __future__ import annotations
 
 import abc
 from copy import copy
-from typing import Tuple, Dict, Protocol, Mapping, Iterable, Type, Literal, Callable, TypeGuard
+from typing import (
+    Callable,
+    Dict,
+    Iterable,
+    Literal,
+    Mapping,
+    Protocol,
+    Tuple,
+    Type,
+    TypeGuard,
+    get_args,
+)
 from uuid import uuid4
 
-from .utilities.geometric import Rect, Transform, FitMode, FIT_OPTIONS
 from .utilities.func import call_matching_params
+from .utilities.geometric import FIT_OPTIONS, FitMode, Rect, Transform
 
 
 # ======================================================================================================================
@@ -109,6 +120,28 @@ def is_domain(value: any) -> TypeGuard[LayerDomain]:
 # ======================================================================================================================
 #   Layer base class
 # ======================================================================================================================
+
+
+BlendMode = Literal[
+    "normal",
+    "multiply",
+    "screen",
+    "overlay",
+    "darken",
+    "lighten",
+    "color_dodge",
+    "color_burn",
+    "hard_light",
+    "soft_light",
+    "difference",
+    "exclusion",
+    "hue",
+    "saturation",
+    "color",
+    "luminosity",
+]
+
+
 class Layer(abc.ABC):
     def __init__(self, layer_type: str):
         self._options = {
@@ -182,6 +215,14 @@ class Layer(abc.ABC):
                             continue
                     self._options["opacity"] = v
 
+                case "blend_mode":
+                    if v not in get_args(BlendMode):
+                        if raise_on_error:
+                            raise ValueError(f"blend_mode must be one of {BlendMode}, got {v}")
+                        else:
+                            continue
+                    self._options["blend_mode"] = v
+
                 case "label":
                     if not isinstance(v, str):
                         if raise_on_error:
@@ -228,6 +269,14 @@ class Layer(abc.ABC):
     @opacity.setter
     def opacity(self, value: float):
         self.set_options({"opacity": value})
+
+    @property
+    def blend_mode(self) -> BlendMode:
+        return self._options["blend_mode"]
+
+    @blend_mode.setter
+    def blend_mode(self, value: BlendMode):
+        self.set_options({"blend_mode": value})
 
     @property
     def label(self) -> str:
@@ -354,7 +403,7 @@ class Layer(abc.ABC):
         return DispatcherUnbind(self._on_options_change, uuid)
 
     def _ipython_display_(self):
-        from .view2d import View2D
+        from .view2d import View2D  # noqa: I001
         from IPython.core.display import display
 
         return display(View2D(self))
