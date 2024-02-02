@@ -1,5 +1,9 @@
 from __future__ import annotations
-from typing import overload, Literal, TypeGuard
+
+from functools import reduce
+from typing import Iterable, NamedTuple, Tuple, TypeGuard, overload
+
+from .func import StrEnum
 
 
 class Transform:
@@ -7,6 +11,9 @@ class Transform:
         self._translate = translate
         self._scale = scale
         self._origin = origin
+
+    def __repr__(self):
+        return f"Transform(translate={self._translate}, scale={self._scale}, origin={self._origin})"
 
     @overload
     def __call__(self, p: tuple) -> tuple:
@@ -34,7 +41,7 @@ class Transform:
         if isinstance(p, Rect):
             return Rect.from_points(self(p.top_left), self(p.bottom_right))
         elif isinstance(p, Point):
-            return (p - self._origin) * self._scale + self._translate
+            return ((p - self._origin) * self._scale) + self._origin + self._translate
         else:
             raise TypeError("Only Rect and Point are supported")
 
@@ -62,39 +69,22 @@ class Transform:
             ratio = target.h / origin.h
         else:
             raise ValueError("Origin rect cannot be empty")
-        return Transform(offset, ratio, src.top_left)
+        return Transform(offset, ratio, origin.top_left)
 
 
-FIT_WIDTH = "fit_width"
-FIT_HEIGHT = "fit_height"
-FIT_INNER = "fit_inner"
-FIT_OUTER = "fit_outer"
-CENTERED = "centered"
-
-FIT_OPTIONS = (FIT_WIDTH, FIT_HEIGHT, FIT_INNER, FIT_OUTER, CENTERED)
-
-FitMode = Literal["fit_width", "fit_height", "fit_inner", "fit_outer", "centered"]
+class FitMode(StrEnum):
+    WIDTH = "fit_width"
+    HEIGHT = "fit_height"
+    INNER = "fit_inner"
+    OUTER = "fit_outer"
+    CENTERED = "centered"
 
 
-class Rect(tuple):
-    def __new__(cls, h: float, w: float, y: float = 0, x: float = 0):
-        return tuple.__new__(Rect, (h, w, y, x))
-
-    @property
-    def x(self):
-        return self[3]
-
-    @property
-    def y(self):
-        return self[2]
-
-    @property
-    def h(self):
-        return self[0]
-
-    @property
-    def w(self):
-        return self[1]
+class Rect(NamedTuple):
+    h: float
+    w: float
+    y: float = 0
+    x: float = 0
 
     @property
     def center(self) -> Point:
@@ -109,51 +99,79 @@ class Rect(tuple):
         return Point(self.y + self.h, self.x + self.w)
 
     @property
+    def top(self) -> float:
+        return self.y
+
+    @property
+    def bottom(self) -> float:
+        return self.y + self.h
+
+    @property
+    def left(self) -> float:
+        return self.x
+
+    @property
+    def right(self) -> float:
+        return self.x + self.w
+
+    @property
     def shape(self) -> Point:
-        return Point(self.w, self.h)
+        return Point(y=self.h, x=self.w)
+
+    @property
+    def area(self) -> float:
+        return self.h * self.w
 
     def to_int(self):
         return Rect(*(int(round(_)) for _ in (self.h, self.w, self.y, self.x)))
 
-    @staticmethod
-    def from_size(shape: tuple):
-        return Rect(shape[0], shape[1])
+    @classmethod
+    def from_size(cls, shape: Tuple[float, float]):
+        return cls(shape[0], shape[1])
 
-    @staticmethod
-    def from_points(p1: tuple, p2: tuple):
-        return Rect(p2[0] - p1[0], p2[1] - p1[1], p1[0], p1[1])
+    @classmethod
+    def from_points(cls, p1: Tuple[float, float], p2: Tuple[float, float], ensure_positive: bool = False):
+        if not ensure_positive:
+            return cls(abs(p2[0] - p1[0]), abs(p2[1] - p1[1]), min(p1[0], p2[0]), min(p1[1], p2[1]))
+        else:
+            rect = cls(p2[0] - p1[0], p2[1] - p1[1], p1[0], p1[1])
+            return Rect.empty() if rect.h < 0 or rect.w < 0 else rect
 
-    @staticmethod
-    def from_center(center: tuple, shape: tuple):
-        return Rect(shape[0], shape[1], center[0] - shape[0] // 2, center[1] - shape[1] // 2)
+    @classmethod
+    def from_center(cls, center: Tuple[float, float], shape: Tuple[float, float]):
+        return cls(shape[0], shape[1], center[0] - shape[0] // 2, center[1] - shape[1] // 2)
 
-    @staticmethod
-    def empty():
-        return Rect(0, 0, 0, 0)
+    @classmethod
+    def empty(cls):
+        return cls(0, 0, 0, 0)
 
     def is_self_empty(self) -> bool:
         return self.w == 0 or self.h == 0
 
-    @staticmethod
-    def is_empty(rect: Rect | None) -> bool:
+    @classmethod
+    def is_empty(cls, rect: Rect | None) -> bool:
         if rect is None:
             return True
         if isinstance(rect, tuple) and len(rect) == 4:
             rect = Rect(*rect)
         return isinstance(rect, tuple) and (rect.w == 0 or rect.h == 0)
 
-    @staticmethod
-    def is_rect(r) -> TypeGuard[Rect]:
+    @classmethod
+    def is_rect(cls, r) -> TypeGuard[Rect]:
         return isinstance(r, Rect) or (isinstance(r, tuple) and len(r) == 4)
 
     def __repr__(self):
-        return "Rect(y={}, x={}, h={}, w={}, )".format(self.y, self.x, self.h, self.w)
+        return "Rect(y={}, x={}, h={}, w={})".format(self.y, self.x, self.h, self.w)
 
     def __or__(self, other):
         if isinstance(other, Rect):
+            if self.is_self_empty():
+                return other
+            if other.is_self_empty():
+                return self
             return Rect.from_points(
-                (max(self.y + self.h, other.y + other.h), max(self.x + self.w, other.x + other.w)),
-                (min(self.y, other.y), min(self.x, other.x)),
+                (min(self.top, other.top), min(self.left, other.left)),
+                (max(self.bottom, other.bottom), max(self.right, other.right)),
             )
         else:
             raise TypeError("Rect can only be combined only with another Rect")
@@ -161,68 +179,136 @@ class Rect(tuple):
     def __and__(self, other):
         if isinstance(other, Rect):
             return Rect.from_points(
-                (min(self.y + self.h, other.y + other.h), min(self.x + self.w, other.x + other.w)),
-                (max(self.y, other.y), max(self.x, other.x)),
+                (max(self.top, other.top), max(self.left, other.left)),
+                (min(self.bottom, other.bottom), min(self.right, other.right)),
+                ensure_positive=True,
             )
         else:
             raise TypeError("Rect can only be combined only with another Rect")
 
+    def __bool__(self):
+        return not self.is_self_empty()
+
+    def __add__(self, other: Point | float):
+        if isinstance(other, float):
+            other = Point(other, other)
+        if isinstance(other, Point):
+            return self.translate(other.y, other.x)
+        raise TypeError("Rect can only be translated by a Point or a float")
+
+    def __sub__(self, other: Point | float):
+        if isinstance(other, float):
+            other = Point(other, other)
+        if isinstance(other, Point):
+            return self.translate(-other.y, -other.x)
+        raise TypeError("Rect can only be translated by a Point or a float")
+
+    def __mul__(self, other: float):
+        return self.scale(other)
+
+    def __truediv__(self, other: float):
+        return self.scale(1 / other)
+
+    def __contains__(self, other: Point | Rect):
+        if isinstance(other, Point):
+            return self.y <= other.y <= self.y + self.h and self.x <= other.x <= self.x + self.w
+        elif isinstance(other, Rect):
+            return not Rect.is_empty(self & other)
+        else:
+            raise TypeError("Rect can only be compared with a Point or a Rect")
+
     def translate(self, y: float, x: float):
-        return Rect(self.w, self.h, self.y + y, self.x + x)
+        return Rect(self.h, self.w, self.y + y, self.x + x)
 
     def scale(self, fy: float, fx: float | None = None):
         if fx is None:
             fx = fy
-        return Rect(self.w * fy, self.h * fx, self.y * fy, self.x * fx)
+        return Rect(self.h * fy, self.w * fx, self.y * fy, self.x * fx)
 
-    def fit(self, other: Rect | Point | tuple, mode: FitMode = FIT_WIDTH):
+    def fit(self, other: Rect | Point | tuple, mode: FitMode = FitMode.WIDTH):
         match other:
             case (h, w):
                 other = Rect.from_size((h, w))
             case (h, w, y, x):
                 other = Rect(h, w, y, x)
         match mode:
-            case "fit_outer":
+            case FitMode.OUTER:
                 ratio = max(other.w / self.w, other.h / self.h)
-            case "fit_inner":
+            case FitMode.INNER:
                 ratio = min(other.w / self.w, other.h / self.h)
-            case "fit_width":
+            case FitMode.WIDTH:
                 ratio = other.w / self.w
-            case "fit_height":
+            case FitMode.HEIGHT:
                 ratio = other.h / self.h
             case _:
                 ratio = 1
         return Rect.from_center(other.center, (self.h * ratio, self.w * ratio))
 
-    def transform(self, origin: Rect, target: Rect):
-        mapping = Transform.from_rects(origin, target)
-        return mapping(self)
+    def transforms_to(self, target: Rect) -> Transform:
+        return Transform.from_rects(self, target)
+
+    def slice(self) -> tuple[slice, slice]:
+        return slice(self.y, self.y + self.h), slice(self.x, self.x + self.w)
+
+    @staticmethod
+    def union(*rects: Tuple[Iterable[Rect] | Rect, ...]) -> Rect:
+        rects = sum(((r,) if isinstance(r, Rect) else tuple(r) for r in rects), ())
+        return reduce(lambda a, b: a | b, rects)
+
+    @staticmethod
+    def intersection(*rects: Tuple[Iterable[Rect] | Rect, ...]) -> Rect:
+        rects = sum(((r,) if isinstance(r, Rect) else tuple(r) for r in rects), ())
+        return reduce(lambda a, b: a & b, rects)
 
 
-class Point(tuple):
-    def __new__(cls, y: float, x: float):
-        return tuple.__new__(Point, (y, x))
+class Point(NamedTuple):
+    y: float
+    x: float
 
-    @property
-    def x(self):
-        return self[1]
+    def xy(self) -> tuple[float, float]:
+        return self.x, self.y
 
-    @property
-    def y(self):
-        return self[0]
+    def to_int(self) -> Point:
+        return Point(int(round(self.y)), int(round(self.x)))
 
-    def __add__(self, other: Point | float):
-        if isinstance(other, float):
+    def __add__(self, other: Tuple[float, float] | float):
+        if isinstance(other, (float, int)):
             return Point(self.y + other, self.x + other)
-        return Point(self.y + other.y, self.x + other.x)
+        y, x = other
+        return Point(self.y + y, self.x + x)
 
-    def __sub__(self, other: Point | float):
-        if isinstance(other, float):
+    def __radd__(self, other: Tuple[float, float] | float):
+        return self + other
+
+    def __sub__(self, other: Tuple[float, float] | float):
+        if isinstance(other, (float, int)):
             return Point(self.y - other, self.x - other)
-        return Point(self.y - other.y, self.x - other.x)
+        y, x = other
+        return Point(self.y - y, self.x - x)
 
-    def __mul__(self, other: float):
-        return Point(self.y * other, self.x * other)
+    def __rsub__(self, other: Tuple[float, float] | float):
+        return -(self - other)
 
-    def __truediv__(self, other: float):
-        return Point(self.y / other, self.x / other)
+    def __mul__(self, other: Tuple[float, float] | float):
+        if isinstance(other, (float, int)):
+            return Point(self.y * other, self.x * other)
+        y, x = other
+        return Point(self.y * y, self.x * x)
+
+    def __rmul__(self, other: Tuple[float, float] | float):
+        return self * other
+
+    def __truediv__(self, other: Tuple[float, float] | float):
+        if isinstance(other, (float, int)):
+            return Point(self.y / other, self.x / other)
+        y, x = other
+        return Point(self.y / y, self.x / x)
+
+    def __rtruediv__(self, other: Tuple[float, float] | float):
+        if isinstance(other, (float, int)):
+            return Point(other / self.y, other / self.x)
+        y, x = other
+        return Point(y / self.y, x / self.x)
+
+    def __neg__(self):
+        return Point(-self.y, -self.x)

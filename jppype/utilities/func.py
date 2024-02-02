@@ -1,5 +1,8 @@
 import inspect
+from enum import EnumMeta
 from typing import Mapping, Protocol
+
+from strenum import StrEnum as StrEnumBase
 
 
 class FlagContextSetFlag(Protocol):
@@ -70,3 +73,12 @@ def dict_recursive_update(d1: dict, d2: Mapping) -> Mapping:
         else:
             d1[k] = v
     return d1
+
+
+class MetaEnum(EnumMeta):
+    def __contains__(cls, item):
+        return item in tuple(cls)
+
+
+class StrEnum(StrEnumBase, metaclass=MetaEnum):
+    ...
