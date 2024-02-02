@@ -11,7 +11,6 @@ interface View2DRenderProps {
 }
 
 export default function View2DRender(props: View2DRenderProps) {
-  console.log('View2DRender', props);
   const zIndex: { name: string; zId: number }[] = [];
   for (const [name, opts] of Object.entries(props.options)) {
     if (name in props.layers && opts.visible) {
@@ -21,8 +20,6 @@ export default function View2DRender(props: View2DRenderProps) {
   zIndex.sort((a, b) => a.zId - b.zId);
   const layers = [];
 
-  console.log(zIndex);
-
   for (const name of zIndex.map((z) => z.name)) {
     const data = props.layers[name];
     const opt = props.options[name];
@@ -30,7 +27,6 @@ export default function View2DRender(props: View2DRenderProps) {
 
     switch (data.type) {
       case 'image':
-        console.log('image', opt);
         layers.push(
           <ImageLayer
             data={data} options={opt}
@@ -38,10 +34,8 @@ export default function View2DRender(props: View2DRenderProps) {
             pixelSize={pixelSize}
             key={name}
           />);
-        console.log(' image done');
         break;
       case 'label':
-        console.log('label', opt);
         layers.push(
           <LabelLayer
             data={data} options={opt}
@@ -49,10 +43,8 @@ export default function View2DRender(props: View2DRenderProps) {
             key={name}
             pixelSize={pixelSize}
           />);
-        console.log(' label done');
         break;
       case 'graph':
-        console.log('graph', opt);
         layers.push(
           <GraphLayer
             data={data} options={opt}
@@ -60,7 +52,6 @@ export default function View2DRender(props: View2DRenderProps) {
             pixelSize={pixelSize}
             key={name}
           />);
-        console.log(' graph done');
         break;
     }
   }
