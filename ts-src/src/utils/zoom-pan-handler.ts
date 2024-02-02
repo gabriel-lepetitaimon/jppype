@@ -1,20 +1,13 @@
-import {
-  RefObject,
-  useEffect,
-  useState,
-  useReducer,
-  useMemo,
-  useLayoutEffect,
-} from 'react';
+import { RefObject, useEffect, useLayoutEffect, useMemo, useReducer, useState } from "react";
 
-import { ORIGIN, Point, Rect } from './point';
-import { Observable } from 'rxjs';
-import useResizeObserver from '@react-hook/resize-observer';
-import { Animator, Animation } from './animator';
+import useResizeObserver from "@react-hook/resize-observer";
+import { Observable } from "rxjs";
+import { Animation, Animator } from "./animator";
+import { ORIGIN, Point, Rect } from "./point";
 
 export interface Transform {
   center: Point;
-  coord?: 'scene' | 'relative';
+  coord?: "scene" | "relative";
   zoom: number;
 }
 
@@ -22,7 +15,7 @@ function isSameTransform(t1: Transform, t2: Transform): boolean {
   return t1.center.equals(t2.center) && t1.zoom === t2.zoom;
 }
 
-export type Coord = 'view' | 'scene' | 'relative';
+export type Coord = "view" | "scene" | "relative";
 
 // =========================================================================
 //          --- ZOOM STATE ---
@@ -31,7 +24,7 @@ export type Coord = 'view' | 'scene' | 'relative';
 class ZoomAreaState {
   protected _viewSize: Point;
   protected _maxZoom?: number;
-  protected  _minScale?: number;
+  protected _minScale?: number;
   protected _minZoom?: number;
   protected _defaultScale?: number;
   protected _relativeSceneBoundaries?: Rect;
@@ -40,7 +33,7 @@ class ZoomAreaState {
     protected _ref: RefObject<HTMLElement>,
     protected _sceneRect: Rect,
     protected _maxScale: number,
-    protected _sceneDefaultRect?: Rect | null,
+    protected _sceneDefaultRect?: Rect | null
   ) {}
 
   // === Zoom Area Properties ===
@@ -76,14 +69,12 @@ class ZoomAreaState {
   }
 
   public get sceneMainDomain(): Rect {
-    return this._sceneDefaultRect && (!this._sceneDefaultRect.isEmpty())
-        ? this._sceneDefaultRect
-        : this.sceneRect;
+    return this._sceneDefaultRect && !this._sceneDefaultRect.isEmpty() ? this._sceneDefaultRect : this.sceneRect;
   }
 
   public set sceneMainDomain(p: Rect | null) {
     this._sceneDefaultRect = p;
-    this.invalidatedScaleConstants()
+    this.invalidatedScaleConstants();
   }
 
   protected invalidatedScaleConstants() {
@@ -132,8 +123,9 @@ class ZoomAreaState {
   public get relativeSceneBoundaries(): Rect {
     // sceneRect in relative coordinates (i.e. relative to sceneDefaultRect)
     if (this._relativeSceneBoundaries === undefined) {
-      this._relativeSceneBoundaries = this.sceneRect.translate(this.sceneMainDomain.topLeft.neg())
-                                                    .scale(this.sceneMainDomain.size.inv());
+      this._relativeSceneBoundaries = this.sceneRect
+        .translate(this.sceneMainDomain.topLeft.neg())
+        .scale(this.sceneMainDomain.size.inv());
     }
     return this._relativeSceneBoundaries;
   }
@@ -158,13 +150,13 @@ class ZoomAreaState {
   public scene2relative(p: Rect): Rect;
   public scene2relative(p: unknown): unknown {
     if (p instanceof Point) {
-        return this.sceneMainDomain.isEmpty()
+      return this.sceneMainDomain.isEmpty()
         ? new Point(0.5, 0.5)
         : p.substract(this.sceneMainDomain.topLeft).divide(this.sceneMainDomain.size);
     } else if (p instanceof Rect) {
       return this.sceneMainDomain.isEmpty()
-          ? Rect.unitary()
-          : p.translate(this.sceneMainDomain.topLeft.neg()).scale(this.sceneMainDomain.size.inv());
+        ? Rect.unitary()
+        : p.translate(this.sceneMainDomain.topLeft.neg()).scale(this.sceneMainDomain.size.inv());
     }
   }
 
@@ -174,49 +166,49 @@ class ZoomAreaState {
     if (p instanceof Point) {
       return p.multiply(this.sceneMainDomain.size).add(this.sceneMainDomain.topLeft);
     } else if (p instanceof Rect) {
-        return p.scale(this.sceneMainDomain.size).translate(this.sceneMainDomain.topLeft);
+      return p.scale(this.sceneMainDomain.size).translate(this.sceneMainDomain.topLeft);
     }
   }
 
   public centerInSceneCoord(t: Transform): Point {
-    return t.coord === 'relative' ? this.relative2scene(t.center) : t.center;
+    return t.coord === "relative" ? this.relative2scene(t.center) : t.center;
   }
 
   public centerInRelativeCoord(t: Transform): Point {
-    return t.coord === 'relative' ? t.center : this.scene2relative(t.center);
+    return t.coord === "relative" ? t.center : this.scene2relative(t.center);
   }
 
   public relativeTransform(t: Transform): Transform {
-    return t.coord === 'relative' ? t : { zoom: t.zoom, center: this.scene2relative(t.center), coord: 'relative' };
+    return t.coord === "relative" ? t : { zoom: t.zoom, center: this.scene2relative(t.center), coord: "relative" };
   }
 
   public toRelativeCoord(p: Point, t: Transform, coord?: Coord): Point;
   public toRelativeCoord(p: Rect, t: Transform, coord?: Coord): Rect;
 
-  public toRelativeCoord(p:  Point | Rect, t: Transform, coord?: Coord): unknown {
+  public toRelativeCoord(p: Point | Rect, t: Transform, coord?: Coord): unknown {
     if (p instanceof Point) {
       switch (coord) {
-        case 'view':
-          if(this.sceneMainDomain.isEmpty())
-            return new Point(0.5, 0.5);
+        case "view":
+          if (this.sceneMainDomain.isEmpty()) return new Point(0.5, 0.5);
 
           return p
-            .substract(this.viewSize.divide(2))   // Center on the view center
-            .divide(this.zoom2scale(t.zoom))        // Scale to scene coordinate
-            .divide(this.sceneMainDomain.size)     // Scale to relative coordinate (relative to sceneDefaultRect)
-            .add(this.centerInRelativeCoord(t));    // Translate accordingly to the scene center
+            .substract(this.viewSize.divide(2)) // Center on the view center
+            .divide(this.zoom2scale(t.zoom)) // Scale to scene coordinate
+            .divide(this.sceneMainDomain.size) // Scale to relative coordinate (relative to sceneDefaultRect)
+            .add(this.centerInRelativeCoord(t)); // Translate accordingly to the scene center
 
-        case 'relative':
+        case "relative":
           return p;
 
         default: // case 'scene'
           return this.scene2relative(p);
       }
     } else {
-      return new Rect(this.toRelativeCoord(p.topLeft, t, coord) as Point,
-                      this.toRelativeCoord(p.bottomRight, t, coord) as Point);
+      return new Rect(
+        this.toRelativeCoord(p.topLeft, t, coord) as Point,
+        this.toRelativeCoord(p.bottomRight, t, coord) as Point
+      );
     }
-
   }
 
   public toSceneCoord(p: Point, t: Transform, coord?: Coord): Point;
@@ -224,61 +216,60 @@ class ZoomAreaState {
   public toSceneCoord(p: Point | Rect, t: Transform, coord?: Coord): unknown {
     if (p instanceof Point) {
       switch (coord) {
-        case 'view':
+        case "view":
           return p
             .substract(this.viewSize.divide(2)) // Center on the view center
-            .divide(this.zoom2scale(t.zoom))      // Scale to scene coordinate
-            .add(this.centerInSceneCoord(t));     // Translate accordingly to the scene center
-        case 'relative':
+            .divide(this.zoom2scale(t.zoom)) // Scale to scene coordinate
+            .add(this.centerInSceneCoord(t)); // Translate accordingly to the scene center
+        case "relative":
           return this.relative2scene(p);
         default: // case 'scene'
           return p;
       }
     } else {
-      return new Rect(this.toSceneCoord(p.topLeft, t, coord) as Point,
-                      this.toSceneCoord(p.bottomRight, t, coord) as Point);
+      return new Rect(
+        this.toSceneCoord(p.topLeft, t, coord) as Point,
+        this.toSceneCoord(p.bottomRight, t, coord) as Point
+      );
     }
   }
 
   public toViewCoord(p: Point, t: Transform, coord?: Coord): Point;
   public toViewCoord(p: Rect, t: Transform, coord?: Coord): Rect;
-  public toViewCoord(p:  Point | Rect, t: Transform, coord?: Coord): unknown {
+  public toViewCoord(p: Point | Rect, t: Transform, coord?: Coord): unknown {
     if (p instanceof Point) {
-      if(coord === 'view')
-          return p;
+      if (coord === "view") return p;
 
-      if(coord === 'relative')
-          p = this.toSceneCoord(p, t, 'relative') as Point; // ensure p is in scene coordinates
+      if (coord === "relative") p = this.toSceneCoord(p, t, "relative") as Point; // ensure p is in scene coordinates
       return (p as Point)
-          .substract(this.centerInSceneCoord(t)) // Center on the scene center
-          .multiply(this.zoom2scale(t.zoom))     // Scale to view coordinate
-          .add(this.viewSize.divide(2));      // Translate accordingly to the view center
-
+        .substract(this.centerInSceneCoord(t)) // Center on the scene center
+        .multiply(this.zoom2scale(t.zoom)) // Scale to view coordinate
+        .add(this.viewSize.divide(2)); // Translate accordingly to the view center
     } else {
-        return new Rect(this.toViewCoord(p.topLeft, t, coord) as Point,
-                        this.toViewCoord(p.bottomRight, t, coord) as Point);
+      return new Rect(
+        this.toViewCoord(p.topLeft, t, coord) as Point,
+        this.toViewCoord(p.bottomRight, t, coord) as Point
+      );
     }
   }
 
   public transform2VisibleArea(t: Transform): Rect {
-    return Rect.fromCenter(
-      this.centerInSceneCoord(t),
-      this.viewSize.divide(this.zoom2scale(t.zoom))
-    );
+    return Rect.fromCenter(this.centerInSceneCoord(t), this.viewSize.divide(this.zoom2scale(t.zoom)));
   }
 
-  public visibleArea2Transform(visibleArea: Rect, coord?: 'scene' | 'relative'): Transform {
+  public visibleArea2Transform(visibleArea: Rect, coord?: "scene" | "relative"): Transform {
     let center = visibleArea.center;
     let visibleSize = visibleArea.size;
-    if (coord === 'relative')                               // If visibleArea is in relative coordinates
-      visibleSize = visibleSize.multiply(this.sceneMainDomain.size);       // Cast visibleSize to scene coordinates
-    else                                                    // If visibleArea is in scene coordinates
-      center = this.scene2relative(center);      // Cast center to relative coordinates
+    if (coord === "relative")
+      // If visibleArea is in relative coordinates
+      visibleSize = visibleSize.multiply(this.sceneMainDomain.size); // Cast visibleSize to scene coordinates
+    // If visibleArea is in scene coordinates
+    else center = this.scene2relative(center); // Cast center to relative coordinates
 
     return {
       zoom: this.scale2zoom(this.viewSize.divide(visibleSize).min()),
       center: center,
-      coord: 'relative',
+      coord: "relative",
     };
   }
 
@@ -295,7 +286,7 @@ class ZoomAreaState {
     const scale = this.zoom2scale(transform.zoom);
     const pad = this.viewSize.divide(2 * scale).clip(this.sceneRect.size.divide(2));
     const centerBoundaries =
-      transform.coord === 'relative'
+      transform.coord === "relative"
         ? this.relativeSceneBoundaries.pad(pad.divide(this.sceneMainDomain.size))
         : this.sceneRect.pad(pad);
     return { ...transform, center: center.clip(centerBoundaries) };
@@ -306,12 +297,7 @@ class ZoomAreaState {
     return this.constraintCenter({ ...t, zoom: zoom });
   }
 
-  public applyZoom(
-    t: Transform,
-    dZoom: number,
-    zoomCenter?: Point,
-    coord?: Coord
-  ): Transform {
+  public applyZoom(t: Transform, dZoom: number, zoomCenter?: Point, coord?: Coord): Transform {
     const newZoom = this.constraintZoom(t.zoom + dZoom);
     dZoom = newZoom - t.zoom;
     if (dZoom === 0) {
@@ -322,17 +308,16 @@ class ZoomAreaState {
     if (zoomCenter) {
       let center = this.centerInSceneCoord(t);
       let dCenter: Point; // Translation value
-      if (coord === 'view') {
+      if (coord === "view") {
         dCenter = zoomCenter
-          .substract(this.viewSize.divide(2))                                     // Center on the view center
-          .multiply(1 / this.zoom2scale(t.zoom) - 1 / this.zoom2scale(newZoom));  // Scale translation according to the zoom delta
+          .substract(this.viewSize.divide(2)) // Center on the view center
+          .multiply(1 / this.zoom2scale(t.zoom) - 1 / this.zoom2scale(newZoom)); // Scale translation according to the zoom delta
       } else {
-        if (coord === 'relative')
-          zoomCenter = this.relative2scene(zoomCenter); // Cast zoomCenter to scene coordinates
+        if (coord === "relative") zoomCenter = this.relative2scene(zoomCenter); // Cast zoomCenter to scene coordinates
 
         dCenter = zoomCenter
-          .substract(center)                            // Center on the view center (in scene coordinates)
-          .multiply(1 - Math.pow(2, -dZoom));     // Scale translation according to the zoom delta
+          .substract(center) // Center on the view center (in scene coordinates)
+          .multiply(1 - Math.pow(2, -dZoom)); // Scale translation according to the zoom delta
       }
 
       return this.constraintCenter({ center: center.add(dCenter), zoom: newZoom });
@@ -344,20 +329,20 @@ class ZoomAreaState {
 
 export class ZoomTransform {
   public dispatch: ZoomDispatch;
-  public animator: Animator<'center' | 'zoom'>;
+  public animator: Animator<"center" | "zoom">;
   public animationTarget?: Transform;
   protected _scale: number;
   protected _t: Transform;
   public syncTransform?: [Observable<Transform>, (t: Transform) => void];
 
   constructor(public areaState: ZoomAreaState, transform: Transform) {
-    this.animator = new Animator<'center' | 'zoom'>(
+    this.animator = new Animator<"center" | "zoom">(
       (t) => {
         this.dispatch({
           animStep: {
-            center: t['center'] as Point,
-            zoom: t['zoom'] as number,
-            coord: 'relative',
+            center: t["center"] as Point,
+            zoom: t["zoom"] as number,
+            coord: "relative",
           },
         });
       },
@@ -384,30 +369,24 @@ export class ZoomTransform {
 
   toViewCoord(p: Point, coord?: Coord): Point;
   toViewCoord(p: Rect, coord?: Coord): Rect;
-  toViewCoord(p:  Point | Rect, coord?: Coord): unknown {
+  toViewCoord(p: Point | Rect, coord?: Coord): unknown {
     // @ts-ignore
     return this.areaState.toViewCoord(p, this._t, coord);
   }
 
   toRelativeCoord(p: Point, coord?: Coord): Point;
   toRelativeCoord(p: Rect, coord?: Coord): Rect;
-  toRelativeCoord(p:  Point | Rect, coord?: Coord): unknown {
+  toRelativeCoord(p: Point | Rect, coord?: Coord): unknown {
     // @ts-ignore
     return this.areaState.toRelativeCoord(p, this._t, coord);
   }
 
   view2scene(p: Point): Point {
-    return p
-      .substract(this.areaState.viewSize.divide(2))
-      .divide(this.scale)
-      .add(this.center);
+    return p.substract(this.areaState.viewSize.divide(2)).divide(this.scale).add(this.center);
   }
 
   scene2view(p: Point): Point {
-    return p
-      .substract(this.center)
-      .multiply(this.scale)
-      .add(this.areaState.viewSize.divide(2));
+    return p.substract(this.center).multiply(this.scale).add(this.areaState.viewSize.divide(2));
   }
 
   get scale(): number {
@@ -419,17 +398,11 @@ export class ZoomTransform {
   }
 
   get viewOffset(): Point {
-    return this.areaState
-      .centerInSceneCoord(this._t)
-      .multiply(this.scale)
-      .substract(this.areaState.viewSize.divide(2));
+    return this.areaState.centerInSceneCoord(this._t).multiply(this.scale).substract(this.areaState.viewSize.divide(2));
   }
 
   get visibleArea(): Rect {
-    return Rect.fromCenter(
-      this.transform.center,
-      this.areaState.viewSize.divide(this.transform.zoom)
-    );
+    return Rect.fromCenter(this.transform.center, this.areaState.viewSize.divide(this.transform.zoom));
   }
 
   get sceneDomain(): Rect {
@@ -449,37 +422,29 @@ export function useZoomTransform(
   syncTransform?: [Observable<Transform>, (t: Transform) => void]
 ): ZoomTransform {
   // --- Initialization ---
-  const iniAreaState: ZoomAreaState = new ZoomAreaState(
-    ref,
-    sceneRect,
-    maxScale,
-    sceneDefaultRect
-  );
+  const iniAreaState: ZoomAreaState = new ZoomAreaState(ref, sceneRect, maxScale, sceneDefaultRect);
 
   // --- States ---
   const iniTransform: Transform = {
     center: new Point(0.5, 0.5),
     zoom: 0,
-    coord: 'relative',
+    coord: "relative",
   };
 
   const [[zoomTransform], dispatch] = useReducer(
-    (
-      zoomState: [ZoomTransform, Transform],
-      action: ZoomAction
-    ): [ZoomTransform, Transform] => {
+    (zoomState: [ZoomTransform, Transform], action: ZoomAction): [ZoomTransform, Transform] => {
       const [zoomTransform, prevTr] = zoomState;
       let tr = prevTr;
       const state = zoomTransform.areaState;
       let newTr = tr;
 
       // --- Apply action ---
-      if ('syncTransform' in action) {
+      if ("syncTransform" in action) {
         newTr = state.constraintTransform(action.syncTransform);
         zoomTransform.transform = newTr;
         zoomTransform.animator.stop();
         return [zoomTransform, newTr];
-      } else if ('animStep' in action) {
+      } else if ("animStep" in action) {
         newTr = action.animStep;
       } else {
         if (zoomTransform.animator.running) {
@@ -490,44 +455,39 @@ export function useZoomTransform(
           zoomTransform.animator.stop();
         }
 
-        if ('transform' in action) {
+        if ("transform" in action) {
           newTr = state.constraintTransform(action.transform);
-        } else if ('center' in action) {
+        } else if ("center" in action) {
           const center = state.toSceneCoord(action.center, tr, action.coord);
-          newTr = state.constraintCenter({...tr, center: center, coord: 'scene'});
-        } else if ('zoom' in action) {
-          newTr = state.applyZoom(
-            tr,
-            action.zoom,
-            action.zoomCenter,
-            action.zoomCenterCoord
-          );
-        } else if ('pan' in action) {
+          newTr = state.constraintCenter({ ...tr, center: center, coord: "scene" });
+        } else if ("zoom" in action) {
+          newTr = state.applyZoom(tr, action.zoom, action.zoomCenter, action.zoomCenterCoord);
+        } else if ("pan" in action) {
           let dCenter = action.pan;
-          if (action.coord === 'relative') {
+          if (action.coord === "relative") {
             dCenter = dCenter.multiply(state.sceneMainDomain.size);
-          } else if (action.coord === 'view') {
+          } else if (action.coord === "view") {
             dCenter = dCenter.multiply(zoomTransform.scale);
           }
           newTr = state.constraintCenter({
             zoom: tr.zoom,
             center: state.centerInSceneCoord(tr).add(dCenter),
           });
-        } else if ('ensureVisible' in action) {
+        } else if ("ensureVisible" in action) {
           newTr = state.visibleArea2Transform(action.ensureVisible);
-        } else if ('sceneRect' in action) {
+        } else if ("sceneRect" in action) {
           zoomTransform.areaState.sceneRect = action.sceneRect;
           newTr = zoomTransform.areaState.constraintTransform(tr);
-        } else if ('sceneDefaultRect' in action) {
+        } else if ("sceneDefaultRect" in action) {
           const relativeTransform = state.relativeTransform(tr);
           zoomTransform.areaState.sceneMainDomain = action.sceneDefaultRect;
           newTr = zoomTransform.areaState.constraintTransform(relativeTransform);
-        } else if ('viewSize' in action) {
+        } else if ("viewSize" in action) {
           zoomTransform.areaState.viewSize = action.viewSize;
           newTr = zoomTransform.areaState.constraintTransform(tr);
         }
 
-        if ('animation' in action) {
+        if ("animation" in action) {
           // Setup animation if required
           let centerAnim = action.animation?.centerAnim;
           const c0 = state.centerInRelativeCoord(prevTr);
@@ -544,24 +504,23 @@ export function useZoomTransform(
           } else {
             if (newTr.zoom < prevTr.zoom) {
               // Zoom out
-              zoomAnim = Animation.simple(prevTr.zoom, newTr.zoom, 'quadraticOut');
+              zoomAnim = Animation.simple(prevTr.zoom, newTr.zoom, "quadraticOut");
               if (!centerAnim) {
                 centerAnim = new Animation([
-                  { t: 0.2, v: c0, easing: 'cubicInOut' },
+                  { t: 0.2, v: c0, easing: "cubicInOut" },
                   { t: 1, v: c1 },
                 ]);
               }
             } else if (
               newTr.zoom - prevTr.zoom < -0.5 || // Small zoom in
-              state.centerInSceneCoord(tr).substract(state.centerInSceneCoord(newTr)).norm() *
-                zoomTransform.scale <
+              state.centerInSceneCoord(tr).substract(state.centerInSceneCoord(newTr)).norm() * zoomTransform.scale <
                 state.viewSize.max() / 2 // or moving to a close target
             ) {
               // Small Zoom in displacement
-              zoomAnim = Animation.simple(prevTr.zoom, newTr.zoom, 'quadraticOut');
+              zoomAnim = Animation.simple(prevTr.zoom, newTr.zoom, "quadraticOut");
               if (!centerAnim) {
                 centerAnim = new Animation([
-                  { t: 0, v: c0, easing: 'cubicOut' },
+                  { t: 0, v: c0, easing: "cubicOut" },
                   { t: 0.9, v: c1 },
                 ]);
               }
@@ -569,13 +528,13 @@ export function useZoomTransform(
               // Large Zoom in displacement
               const zoomOut = Math.sqrt(prevTr.zoom + 1) - 1;
               zoomAnim = new Animation([
-                { t: 0, v: prevTr.zoom, easing: 'cubicOut' },
-                { t: 0.3, v: zoomOut, easing: 'cubicInOut' },
+                { t: 0, v: prevTr.zoom, easing: "cubicOut" },
+                { t: 0.3, v: zoomOut, easing: "cubicInOut" },
                 { t: 1, v: newTr.zoom },
               ]);
               if (!centerAnim) {
                 centerAnim = new Animation([
-                  { t: 0, v: c0, easing: 'cubicInOut' },
+                  { t: 0, v: c0, easing: "cubicInOut" },
                   { t: 0.9, v: c1 },
                 ]);
               }
@@ -583,7 +542,7 @@ export function useZoomTransform(
           }
 
           if (!centerAnim) {
-            centerAnim = Animation.simple(c0, c1, 'cubicInOut');
+            centerAnim = Animation.simple(c0, c1, "cubicInOut");
           }
 
           zoomTransform.animator.run(
@@ -604,9 +563,7 @@ export function useZoomTransform(
 
       // --- Update transform ---
       if (zoomTransform.syncTransform && !isSameTransform(newTr, prevTr)) {
-        zoomTransform.syncTransform[1](
-          zoomTransform.areaState.relativeTransform(newTr)
-        );
+        zoomTransform.syncTransform[1](zoomTransform.areaState.relativeTransform(newTr));
       }
       zoomTransform.transform = newTr;
       return [zoomTransform, newTr];
@@ -628,9 +585,7 @@ export function useZoomTransform(
     if (!syncTransform) {
       return;
     }
-    const sub = syncTransform[0].subscribe((t: Transform) =>
-      dispatch({ syncTransform: t })
-    );
+    const sub = syncTransform[0].subscribe((t: Transform) => dispatch({ syncTransform: t }));
     return () => {
       sub.unsubscribe();
     };
@@ -667,12 +622,7 @@ export interface SceneMouseEvent {
   buttons: number;
 }
 
-function createSceneMouseEvent(
-  ev: MouseEvent,
-  cursor: Point,
-  viewCursor: Point,
-  movement: Point
-): SceneMouseEvent {
+function createSceneMouseEvent(ev: MouseEvent, cursor: Point, viewCursor: Point, movement: Point): SceneMouseEvent {
   return {
     cursor: cursor,
     viewCursor: viewCursor,
@@ -699,11 +649,7 @@ export interface SceneWheelEvent {
   buttons: number;
 }
 
-function createSceneWheelEvent(
-  ev: WheelEvent,
-  cursor: Point,
-  viewCursor: Point
-): SceneWheelEvent {
+function createSceneWheelEvent(ev: WheelEvent, cursor: Point, viewCursor: Point): SceneWheelEvent {
   return {
     cursor: cursor,
     viewCursor: viewCursor,
@@ -740,8 +686,8 @@ class ZoomControls {
   }
 
   pan(translate: Point): void {
-    if(!translate.isZero()){
-      this.zoomTransform.dispatch({pan: translate});
+    if (!translate.isZero()) {
+      this.zoomTransform.dispatch({ pan: translate });
     }
   }
 
@@ -752,8 +698,10 @@ class ZoomControls {
 
 export interface MouseEventsListener {
   onMouseDown?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
+  withMouseDownOrClick?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
   onMouseUp?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
   onMouseMove?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
+  onMouseEnter?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
   onMouseLeave?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
   onClick?: (ev: SceneMouseEvent, ctrls: ZoomControls) => void;
   onWheel?: (ev: SceneWheelEvent, ctrls: ZoomControls) => void;
@@ -779,12 +727,18 @@ export function useSceneMouseEventListener(
   const events = useMemo(() => {
     const events: MouseEventsListener = {};
 
-    if (!userEvents?.onMouseDown) {
+    if (userEvents?.onMouseDown === undefined) {
       events.onMouseDown = (ev, ctrls) => {
         if (ev.button === 0 || ev.button === 3) {
           ctrls.startPan(ev);
           setCursorPos(null);
         }
+        userEvents?.withMouseDownOrClick && userEvents.withMouseDownOrClick(ev, ctrls);
+      };
+    } else {
+      events.onMouseDown = (ev, ctrls) => {
+        userEvents?.onMouseDown && userEvents.onMouseDown(ev, ctrls);
+        userEvents?.withMouseDownOrClick && userEvents.withMouseDownOrClick(ev, ctrls);
       };
     }
 
@@ -807,6 +761,12 @@ export function useSceneMouseEventListener(
         userEvents.onMouseUp(ev, ctrls);
       }
     };
+    events.onMouseEnter = (ev, ctrls) => {
+      userEvents?.onMouseEnter && userEvents.onMouseEnter(ev, ctrls);
+      if (hoverEvents) {
+        setCursorPos(ev.cursor.floor());
+      }
+    };
     events.onMouseLeave = (ev, ctrls) => {
       if (ctrls.panning) {
         ctrls.endPan();
@@ -824,20 +784,21 @@ export function useSceneMouseEventListener(
       } else {
         userEvents?.onClick && userEvents.onClick(ev, ctrls);
       }
+      userEvents?.withMouseDownOrClick && userEvents.withMouseDownOrClick(ev, ctrls);
     };
 
     if (!userEvents?.onWheel) {
       events.onWheel = (ev) => {
         const zoomAction: ZoomAction = {
-            zoom: -ev.deltaY,
-            zoomCenter: ev.viewCursor,
-            zoomCenterCoord: 'view',
+          zoom: -ev.deltaY,
+          zoomCenter: ev.viewCursor,
+          zoomCenterCoord: "view",
         };
 
-        if(Math.abs(ev.deltaY) > 1){
-            zoomTransform.dispatch({...zoomAction, animation: {duration: 200, cancelable: false}});
+        if (Math.abs(ev.deltaY) > 1) {
+          zoomTransform.dispatch({ ...zoomAction, animation: { duration: 200, cancelable: false } });
         } else {
-           zoomTransform.dispatch(zoomAction);
+          zoomTransform.dispatch(zoomAction);
         }
       };
     }
@@ -861,14 +822,8 @@ export function useSceneMouseEventListener(
       }
       ev.preventDefault();
       const bounds = Rect.fromDOMRect(node.getBoundingClientRect());
-      const viewPos = new Point(ev.clientX, ev.clientY).substract(
-        bounds.topLeft
-      );
-      const sceneWheelEvent = createSceneWheelEvent(
-        ev,
-        zoomTransform.view2scene(viewPos),
-        viewPos
-      );
+      const viewPos = new Point(ev.clientX, ev.clientY).substract(bounds.topLeft);
+      const sceneWheelEvent = createSceneWheelEvent(ev, zoomTransform.view2scene(viewPos), viewPos);
       events?.onWheel(sceneWheelEvent, zoomCtrls);
     };
 
@@ -884,9 +839,7 @@ export function useSceneMouseEventListener(
     const mouseEL = (ev: MouseEvent) => {
       ev.preventDefault();
       const bounds = Rect.fromDOMRect(node.getBoundingClientRect());
-      const viewPos = new Point(ev.clientX, ev.clientY).substract(
-        bounds.topLeft
-      );
+      const viewPos = new Point(ev.clientX, ev.clientY).substract(bounds.topLeft);
       const sceneMouseEvent = createSceneMouseEvent(
         ev,
         zoomTransform.view2scene(viewPos),
@@ -895,7 +848,7 @@ export function useSceneMouseEventListener(
       );
 
       const clickTimer = clickTimers[ev.button];
-      if (ev.type === 'mousemove') {
+      if (ev.type === "mousemove") {
         if (clickTimer) {
           if (viewPos.substract(clickTimer.startPos).norm() < 5) {
             clickTimer.lastPos = viewPos;
@@ -903,18 +856,15 @@ export function useSceneMouseEventListener(
           }
           clearTimeout(clickTimer.timeout);
           clickTimers[ev.button] = null;
-          events?.onMouseDown &&
-            events.onMouseDown(clickTimer.mouseDownEvent, zoomCtrls);
+          events?.onMouseDown && events.onMouseDown(clickTimer.mouseDownEvent, zoomCtrls);
 
           // Compute mouse movement from ignored event during timer
-          const delta = clickTimer.lastPos
-            .substract(clickTimer.startPos)
-            .divide(zoomTransform.scale);
+          const delta = clickTimer.lastPos.substract(clickTimer.startPos).divide(zoomTransform.scale);
           sceneMouseEvent.movement = sceneMouseEvent.movement.add(delta);
           sceneMouseEvent.cursor = sceneMouseEvent.cursor.add(delta);
         }
         events?.onMouseMove && events.onMouseMove(sceneMouseEvent, zoomCtrls);
-      } else if (ev.type === 'mousedown') {
+      } else if (ev.type === "mousedown") {
         if (clickTimer) {
           clearTimeout(clickTimer.timeout);
         }
@@ -926,21 +876,17 @@ export function useSceneMouseEventListener(
             const c = clickTimers[ev.button];
             if (c) {
               clickTimers[ev.button] = null;
-              events?.onMouseDown &&
-                events.onMouseDown(c.mouseDownEvent, zoomCtrls);
+              events?.onMouseDown && events.onMouseDown(c.mouseDownEvent, zoomCtrls);
 
               // Compute mouse movement from ignored event during timer
-              const delta = c.lastPos
-                .substract(c.startPos)
-                .divide(zoomTransform.scale);
+              const delta = c.lastPos.substract(c.startPos).divide(zoomTransform.scale);
               sceneMouseEvent.movement = delta;
               sceneMouseEvent.cursor = sceneMouseEvent.cursor.add(delta);
-              events?.onMouseMove &&
-                events.onMouseMove(sceneMouseEvent, zoomCtrls);
+              events?.onMouseMove && events.onMouseMove(sceneMouseEvent, zoomCtrls);
             }
           }, 750),
         };
-      } else if (ev.type === 'mouseup') {
+      } else if (ev.type === "mouseup") {
         if (clickTimer) {
           clearTimeout(clickTimer.timeout);
           clickTimers[ev.button] = null;
@@ -948,23 +894,27 @@ export function useSceneMouseEventListener(
         } else {
           events?.onMouseUp && events.onMouseUp(sceneMouseEvent, zoomCtrls);
         }
-      } else if (ev.type === 'mouseleave') {
+      } else if (ev.type === "mouseenter") {
+        events?.onMouseEnter && events.onMouseEnter(sceneMouseEvent, zoomCtrls);
+      } else if (ev.type === "mouseleave") {
         events?.onMouseLeave && events.onMouseLeave(sceneMouseEvent, zoomCtrls);
       }
     };
 
-    node.addEventListener('wheel', wheelEL);
-    node.addEventListener('mousemove', mouseEL);
-    node.addEventListener('mousedown', mouseEL);
-    node.addEventListener('mouseup', mouseEL);
-    node.addEventListener('mouseleave', mouseEL);
+    node.addEventListener("wheel", wheelEL);
+    node.addEventListener("mousemove", mouseEL);
+    node.addEventListener("mousedown", mouseEL);
+    node.addEventListener("mouseup", mouseEL);
+    node.addEventListener("mouseenter", mouseEL);
+    node.addEventListener("mouseleave", mouseEL);
 
     return () => {
-      node.removeEventListener('wheel', wheelEL);
-      node.removeEventListener('mousemove', mouseEL);
-      node.removeEventListener('mousedown', mouseEL);
-      node.removeEventListener('mouseup', mouseEL);
-      node.removeEventListener('mouseleave', mouseEL);
+      node.removeEventListener("wheel", wheelEL);
+      node.removeEventListener("mousemove", mouseEL);
+      node.removeEventListener("mousedown", mouseEL);
+      node.removeEventListener("mouseup", mouseEL);
+      node.removeEventListener("mouseenter", mouseEL);
+      node.removeEventListener("mouseleave", mouseEL);
     };
   }, [zoomTransform, zoomTransform.areaState.node]);
 
@@ -1029,11 +979,5 @@ interface SyncTransform {
 }
 
 export type TransformAction = SetTransform | SetCenter | Zoom | Pan | EnsureVisible;
-export type ZoomAction =
-  | SetSceneRect
-  | SetSceneDefaultRect
-  | SetViewSize
-  | AnimStep
-  | TransformAction
-  | SyncTransform;
+export type ZoomAction = SetSceneRect | SetSceneDefaultRect | SetViewSize | AnimStep | TransformAction | SyncTransform;
 export type ZoomDispatch = React.Dispatch<ZoomAction>;
