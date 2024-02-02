@@ -1,5 +1,4 @@
 from ._version import __version__
-
 from .view2d import View2D, imshow, sync_views
 
 

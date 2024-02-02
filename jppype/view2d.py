@@ -4,14 +4,14 @@ import json
 
 # Copyright (c) Gabriel Lepetit-Aimon.
 # Distributed under the terms of the Modified BSD License.
-from typing import Iterator, Literal, Mapping, Tuple
+from typing import Iterator, Mapping, Tuple
 
 import numpy as np
 import traitlets
 
 from ._frontend import ABCHasTraitMeta, BaseI3PWidget
-from .layer_base import Layer, LayersList
-from .layers_2d import LayerGraph, LayerImage, LayerLabel
+from .layers.layer_base import Layer, LayersList
+from .layers.layers_2d import LayerGraph, LayerImage, LayerLabel, ValueBound
 from .utilities.event import ClickEvent, EventsDispatcher
 from .utilities.func import FlagContext
 
@@ -81,8 +81,8 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         self,
         img,
         name: str | None = None,
-        vmax: Literal["auto"] | float | None = "auto",
-        vmin: Literal["auto"] | float | None = "auto",
+        vmax: ValueBound = "auto",
+        vmin: ValueBound = "auto",
         resize_buffer: Tuple[int, int] | int | None = None,
         options=None,
         **opts,
@@ -141,7 +141,7 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         return self._transform
 
 
-def imshow(image, vmax=None, vmin=None):
+def imshow(image, vmax: ValueBound = 'auto', vmin: ValueBound = 'auto'):
     viewer = View2D()
     viewer.add_image(image, vmax=vmax, vmin=vmin)
     return viewer

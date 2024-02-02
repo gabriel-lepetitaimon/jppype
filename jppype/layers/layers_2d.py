@@ -1,27 +1,43 @@
+from __future__ import annotations
+
+__all__ = ["LayerImage","LayerLabel","LayerIntensityMap","LayerGraph",]
+
 import base64
-import os.path
+from pathlib import Path
+from typing import TYPE_CHECKING, Dict, List, Literal, Tuple, TypeAlias
 
 import cv2
 import numpy as np
-import re
-from typing import Tuple, Literal, Dict, List
 
+from ..utilities.geometric import Rect, Transform
+from ..utilities.image import fit_resize, load_image_from_url
 from .layer_base import Layer, LayerData, LayerDomain
-from .utilities.geometric import Rect, Transform
+
+if TYPE_CHECKING:
+    from torch import Tensor
+    ImageDataType = str | Path | np.ndarray | Tensor
+
+ValueBound: TypeAlias = Literal["auto"] | float | None
+
 
 
 class LayerImage(Layer):
     def __init__(
         self,
-        image,
-        vmax: Literal["auto"] | float | None = "auto",
-        vmin: Literal["auto"] | float | None = "auto",
+        image: ImageDataType,
+        alpha: ImageDataType | None = None,
+        vmax: ValueBound = "auto",
+        vmin: ValueBound = "auto",
         resize_buffer: Tuple[int, int] | int | None = None,
     ):
         super().__init__("image")
         self.buffer_size = resize_buffer
         self._image = None
+        self._image_alpha = None
+        self._alpha = None
+
         self.image = image
+        self.alpha = alpha
 
         self.vmin = vmin
         self.vmax = vmax
@@ -32,14 +48,30 @@ class LayerImage(Layer):
         return self._image
 
     @image.setter
-    def image(self, img):
+    def image(self, img: ImageDataType):
         if isinstance(img, int | float | bool):
-            img = np.empty(self.shape[:2], dtype=np.float).fill(img)
+            self._image = np.empty(self.shape[:2], dtype=np.float).fill(img)
+            self._image_alpha = None
         else:
-            img = LayerImage.cast_img_format(img, self.buffer_size)
-        self._image = img
+            img = LayerImage.load_data(img, self.buffer_size)
+            if len(img.shape) == 3 and img.shape[2] == 4:
+                self._image_alpha = img[:, :, 3]
+            self._image = img[:, :, :3]
         self._notify_data_change()
         self._notify_options_change({"domain": self.shape})
+
+
+    @property
+    def alpha(self):
+        return self._alpha if self._alpha is not None else self._image_alpha
+
+    @alpha.setter
+    def alpha(self, map: ImageDataType | None):
+        if map is None:
+            self._alpha = None
+        else:
+            self._alpha = LayerIntensityMap.load_data(map, self.buffer_size)
+        self._notify_data_change()
 
     # --- Implementation of layer's abstract methods ---
     def _fetch_data(self, resize: tuple[int, int] | None = None) -> LayerData:
@@ -83,11 +115,20 @@ class LayerImage(Layer):
         if vmax is not None:
             img = img / vmax * 255.0
 
+        alpha = self.alpha
         h, w = img.shape[:2]
         if resize is not None:
-            img = self.fit_resize(img, resize)
-
-        return LayerData(self.encode_url(img, "jpg"), infos=dict(width=w, height=h))
+            img = fit_resize(img, resize)
+            if alpha is not None:
+                alpha = fit_resize(alpha, resize, interpolation=cv2.INTER_NEAREST)
+        
+        if alpha is not None:
+            img = np.concatenate((img, alpha[..., None]), axis=-1)
+            img_format = 'png'
+        else:
+            img_format = 'jpg'
+        
+        return LayerData(self.encode_url(img, img_format), infos=dict(width=w, height=h))
 
     def _shape(self):
         return self._image.shape[:2] if self._image is not None else (0, 0)
@@ -103,7 +144,7 @@ class LayerImage(Layer):
 
     # --- Utilities static methods ---
     @staticmethod
-    def cast_img_format(img, resize=None) -> np.ndarray:
+    def load_data(img: ImageDataType, resize=None) -> np.ndarray:
         """
         Cast image to numpy array with shape (H, W, C) or (H, W).
 
@@ -118,24 +159,13 @@ class LayerImage(Layer):
         Casted image
 
         """
-        if isinstance(img, str):
-            if os.path.exists(img):
-                img = cv2.imread(img)
-            elif re.match(r"^https?://", img):
-                from urllib.request import urlopen
-
-                resp = urlopen(img)
-                img = np.asarray(bytearray(resp.read()), dtype=np.uint8)
-                img = cv2.imdecode(img, -1)
-                if img is None:
-                    raise ValueError(f"Invalid image url {img}.")
-            else:
-                raise ValueError(f"Invalid image path {img}.")
+        if isinstance(img, (str, Path)):
+            img = load_image_from_url(img)
         elif type(img).__qualname__ == "Tensor":
             img = img.detach().cpu().numpy()
 
         if len(img.shape) == 3:
-            if img.shape[0] in (1, 3) and img.shape[2] not in (1, 3):
+            if img.shape[0] in (1, 3, 4) and img.shape[2] not in (1, 3, 4):
                 img = img.transpose((1, 2, 0))
             if img.shape[2] == 1:
                 img = img[:, :, 0]
@@ -143,30 +173,9 @@ class LayerImage(Layer):
             raise ValueError(f"Invalid image shape {img.shape}, must be (H, W, C) or (H, W).")
 
         if resize is not None:
-            img = LayerImage.fit_resize(img, resize)
+            img = fit_resize(img, resize)
 
         return img
-
-    @staticmethod
-    def fit_resize(img: np.ndarray, size: Tuple[int, int] | int, interpolation=None) -> np.ndarray:
-        if isinstance(size, int):
-            size = (size, size)
-
-        # Keep aspect ratio
-        h, w = img.shape[:2]
-        ratio = h / w
-        mindim = min(size[0] * ratio, size[1])
-        size = (round(mindim / ratio), round(mindim))
-
-        # Select interpolation method based on image resize
-        if interpolation is None:
-            if size[0] > w or size[1] > h:
-                interpolation = cv2.INTER_CUBIC
-            else:
-                interpolation = cv2.INTER_AREA
-
-        # Resize image
-        return cv2.resize(img, size, interpolation=interpolation)
 
     @staticmethod
     def encode_url(img: np.ndarray, format="jpg") -> str:
@@ -185,19 +194,9 @@ class LayerLabel(Layer):
         return self._label_map
 
     @label_map.setter
-    def label_map(self, data):
-        if type(data).__qualname__ == "Tensor":
-            data = data.detach().cpu().numpy()
-        assert isinstance(data, np.ndarray), f"Invalid label type {type(data)}. Must be numpy.ndarray."
-        assert data.ndim == 2, f"Invalid label shape {data.shape}. Must be (H, W)."
-
-        error = ValueError(f"Invalid label type {data.dtype}. Must be positive integer encoded on maximum 32 bits.")
-        if data.dtype.kind not in "?bBiu":
-            raise error
-        elif np.min(data) < 0 or np.max(data) >= 2**32:
-            raise error
-
-        self._label_map = data.astype(np.uint32)
+    def label_map(self, data):        
+        data = LayerLabel.load_data(data)
+        self._label_map = data
         self._notify_data_change()
 
     @property
@@ -211,9 +210,82 @@ class LayerLabel(Layer):
         self._options["cmap"] = cmap
         self._notify_options_change({"cmap": cmap})
 
+    def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
+        label = self._label_map
+
+        h, w = label.shape[:2]
+        if resize is not None:
+            label = fit_resize(label, resize, interpolation=cv2.INTER_NEAREST)
+        labels = np.unique(label).tolist()
+
+        return LayerData(
+            LayerLabel.encode_url(label),
+            infos={"width": w, "height": h, "labels": labels},
+        )
+
+    def _shape(self):
+        return self.label_map.shape if self.label is not None else (0, 0)
+
+    def _fetch_item(self, x: int, y: int) -> dict:
+        return {"value": self._label[y, x]}
+
+    def _fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str, any]:
+        return {}
+
+    def update_data(self, data: any):
+        self.label_map = data
+
+    # --- Utilities static methods ---
+    @staticmethod
+    def load_data(data, resize=None) -> np.ndarray:
+        """
+        Cast label map (2d map of integer) to a numpy array with shape (H, W).
+
+        Parameters
+        ----------
+        data: np.ndarray or torch.Tensor or path to a label map
+
+        resize: tuple[int, int] or int or None
+
+        Returns
+        -------
+        Casted image
+
+        """
+        if isinstance(data, str):
+            data = load_image_from_url(data)
+            if data.ndim == 3:
+                data = data.mean(axis=-1).astype(np.uint8)
+        elif type(data).__qualname__ == "Tensor":
+            data = data.detach().cpu().numpy()
+
+        assert isinstance(data, np.ndarray), f"Invalid label type {type(data)}. Must be numpy.ndarray."
+        assert data.ndim == 2, f"Invalid label shape {data.shape}. Must be (H, W)."
+
+        error = ValueError(f"Invalid label type {data.dtype}. Must be positive integer encoded on maximum 32 bits.")
+        if data.dtype.kind not in "?bBiu":
+            raise error
+        elif np.min(data) < 0 or np.max(data) >= 2**32:
+            raise error
+
+        if resize is not None:
+            data = fit_resize(data, resize, interpolation=cv2.INTER_NEAREST)
+
+        return data.astype(np.uint32)
+
+    @staticmethod
+    def encode_url(label: np.ndarray) -> str:
+        alpha = (label >> 24).astype(np.uint8)
+        red = ((label >> 16) & 0xFF).astype(np.uint8)
+        green = ((label >> 8) & 0xFF).astype(np.uint8)
+        blue = (label & 0xFF).astype(np.uint8)
+
+        label = np.stack((red, green, blue, 255 - alpha), axis=-1)
+        return LayerImage.encode_url(label, "png")
+
     @staticmethod
     def check_label_colormap(cmap, null_label=True) -> Dict[int, str]:
-        from .utilities.color import colormap_by_name, check_color
+        from ..utilities.color import check_color, colormap_by_name
 
         if not null_label and isinstance(cmap, dict):
             if None in cmap:
@@ -232,46 +304,11 @@ class LayerLabel(Layer):
             raise ValueError(f"Invalid colormap {cmap}. Must be dict[int, str].")
 
         return {int(k): check_color(v) if k != 0 else [check_color(_) for _ in v] for k, v in cmap.items()}
-
-    def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
-        label = self._label_map
-
-        h, w = label.shape[:2]
-        if resize is not None:
-            label = LayerImage.fit_resize(label, resize, interpolation=cv2.INTER_NEAREST)
-        labels = np.unique(label).tolist()
-
-        return LayerData(
-            LayerLabel.encode_label_url(label),
-            infos={"width": w, "height": h, "labels": labels},
-        )
-
-    def _shape(self):
-        return self.label_map.shape if self.label is not None else (0, 0)
-
-    def _fetch_item(self, x: int, y: int) -> dict:
-        return {"value": self._label[y, x]}
-
-    def _fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str, any]:
-        return {}
-
-    def update_data(self, data: any):
-        self.label_map = data
-
-    @staticmethod
-    def encode_label_url(label: np.ndarray) -> str:
-        alpha = (label >> 24).astype(np.uint8)
-        red = ((label >> 16) & 0xFF).astype(np.uint8)
-        green = ((label >> 8) & 0xFF).astype(np.uint8)
-        blue = (label & 0xFF).astype(np.uint8)
-
-        label = np.stack((red, green, blue, 255 - alpha), axis=-1)
-        return LayerImage.encode_url(label, "png")
-
+    
 
 class LayerIntensityMap(Layer):
     def __init__(self, map: np.ndarray, color_range):
-        from .utilities.color import ColorRange
+        from ..utilities.color import ColorRange
 
         super().__init__("intensity")
         self.map = map
@@ -283,8 +320,7 @@ class LayerIntensityMap(Layer):
 
     @map.setter
     def map(self, map):
-        assert isinstance(map, np.ndarray), f"Invalid map type {type(map)}. Must be numpy.ndarray."
-        assert map.ndim == 2, f"Invalid map shape {map.shape}. Must be (H, W)."
+        map = LayerIntensityMap.load_data(map)
         self._map = map
         self._notify_data_change()
 
@@ -298,8 +334,52 @@ class LayerIntensityMap(Layer):
         self._options["color_range"] = color_range
         self._notify_options_change({"color_range": color_range})
 
+    def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
+        map = self.map
+        if resize is not None:
+            map = fit_resize(map, resize, interpolation=cv2.INTER_NEAREST)
+        return LayerData(LayerIntensityMap.encode_url(map))
+
+    def _shape(self):
+        return self.map.shape if self.map is not None else (0, 0)
+
+    def _fetch_item(self, x: int, y: int) -> dict:
+        return {"value": self._map[y, x]}
+
+    # --- Utilities static methods ---
     @staticmethod
-    def encode_intensity_url(label: np.ndarray) -> str:
+    def load_data(data, resize=None) -> np.ndarray:
+        """
+        Cast intensity map (2d map of float) to a numpy array with shape (H, W).
+
+        Parameters
+        ----------
+        data: np.ndarray or torch.Tensor or path to a label map
+
+        resize: tuple[int, int] or int or None
+
+        Returns
+        -------
+        Casted image
+
+        """
+
+        if isinstance(data, str):
+            data = load_image_from_url(data)
+        elif type(data).__qualname__ == "Tensor":
+            data = data.detach().cpu().numpy()
+
+        assert isinstance(map, np.ndarray), f"Invalid map type {type(map)}. Must be numpy.ndarray."
+        assert map.ndim == 2, f"Invalid map shape {map.shape}. Must be (H, W)."
+
+        if resize is not None:
+            data = fit_resize(data, resize)
+
+        return data.astype(np.float32)
+
+
+    @staticmethod
+    def encode_url(label: np.ndarray) -> str:
         label = label.astype(np.float32).tobytes()
         alpha = (label >> 24).astype(np.uint8)
         red = ((label >> 16) & 0xFF).astype(np.uint8)
@@ -308,18 +388,6 @@ class LayerIntensityMap(Layer):
 
         label = np.stack((red, green, blue, 255 - alpha), axis=-1)
         return LayerImage.encode_url(label, "png")
-
-    def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
-        map = self.map
-        if resize is not None:
-            map = LayerImage.fit_resize(map, resize, interpolation=cv2.INTER_NEAREST)
-        return LayerData(LayerIntensityMap.encode_intensity_url(map))
-
-    def _shape(self):
-        return self.map.shape if self.map is not None else (0, 0)
-
-    def _fetch_item(self, x: int, y: int) -> dict:
-        return {"value": self._map[y, x]}
 
 
 class LayerGraph(Layer):
@@ -370,7 +438,7 @@ class LayerGraph(Layer):
 
     def _set_adjacency_list(self, adj, check_dim=True):
         if type(adj).__qualname__ == "Tensor":
-            data = adj.detach().cpu().numpy()
+            adj = adj.detach().cpu().numpy()
         adj = np.asarray(adj)
         assert adj.ndim == 2 and adj.shape[1] == 2, f"Invalid adjacency list shape {adj.shape}. Must be (E, 2)."
         if check_dim:
@@ -506,7 +574,7 @@ class LayerGraph(Layer):
             adj=self._adjacency_list.astype(int).tolist(), nodes_yx=self.nodes_coordinates.astype(float).tolist()
         )
         if self.edge_map is not None:
-            data["edgeMap"] = LayerLabel.encode_label_url(self.edge_map)
+            data["edgeMap"] = LayerLabel.encode_url(self.edge_map)
         return LayerData(
             data=data,
             infos={

@@ -16,8 +16,8 @@ from typing import (
 )
 from uuid import uuid4
 
-from .utilities.func import call_matching_params
-from .utilities.geometric import FIT_OPTIONS, FitMode, Rect, Transform
+from ..utilities.func import call_matching_params
+from ..utilities.geometric import FitMode, Rect, Transform
 
 
 # ======================================================================================================================
@@ -114,7 +114,7 @@ DomainMode = Literal["manual"] | FitMode
 
 
 def is_domain(value: any) -> TypeGuard[LayerDomain]:
-    return isinstance(value, (Rect, str)) or value in FIT_OPTIONS
+    return isinstance(value, (Rect, str)) or value in FitMode
 
 
 # ======================================================================================================================
@@ -304,9 +304,9 @@ class Layer(abc.ABC):
         match value:
             case value if value is None or Rect.is_empty(value):
                 if not Rect.is_empty(shape):
-                    value = Rect.from_size(self.shape).fit(self._main_domain, "fit_width")
+                    value = Rect.from_size(self.shape).fit(self._main_domain, FitMode.WIDTH)
                     self._domain_mode = "manual"
-            case "fit_height" | "fit_width" | "fit_inner" | "fit_outer" | "centered":
+            case v if v in FitMode:
                 if not Rect.is_empty(shape):
                     value = Rect.from_size(self.shape).fit(self._main_domain, value)
                     self._domain_mode = value
@@ -337,7 +337,7 @@ class Layer(abc.ABC):
                         self.domain = transform_domain(self.domain)
                     case transform_domain if is_domain(transform_domain):
                         self.domain = transform_domain
-            case "fit_height" | "fit_width" | "fit_inner" | "fit_outer" | "centered":
+            case v if v in FitMode:
                 self.domain = self.domain_mode
 
     # --- Fetch data methods ---
@@ -403,7 +403,7 @@ class Layer(abc.ABC):
         return DispatcherUnbind(self._on_options_change, uuid)
 
     def _ipython_display_(self):
-        from .view2d import View2D  # noqa: I001
+        from ..view2d import View2D  # noqa: I001
         from IPython.core.display import display
 
         return display(View2D(self))
@@ -469,7 +469,7 @@ class LayersList(metaclass=abc.ABCMeta):
             layer.domain = domain
             main_layer = True
         else:
-            layer.set_main_shape(self.main_layer.domain, "fit_width" if domain is None else domain)
+            layer.set_main_shape(self.main_layer.domain, FitMode.WIDTH if domain is None else domain)
 
         self._layers[layer.uuid] = layer
         self._layers_alias[alias] = layer.uuid
