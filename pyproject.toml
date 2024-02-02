@@ -42,6 +42,7 @@ dependencies = [
     "ipywidgets~=8.0.5,<9",
     "numpy~=1.23.5",
     "opencv-python-headless~=4.7",
+    "StrEnum",
     "webcolors~=1.13"
 ]
 
@@ -62,13 +63,13 @@ allow-direct-references = true
 
 [tool.hatch.build]
 artifacts = [
-    "jppype/nbextension/index.*",
+    "jppype/nbextension/static/index.*",
     "jppype/labextension/*.tgz",
     "jppype/labextension",
 ]
 
 [tool.hatch.build.targets.wheel.shared-data]
-"jppype/nbextension" = "share/jupyter/nbextensions/jppype"
+"jppype/nbextension/static" = "share/jupyter/nbextensions/jppype"
 "jppype/labextension" = "share/jupyter/labextensions/jppype"
 "./install.json" = "share/jupyter/labextensions/jppype/install.json"
 "./jppype.json" = "etc/jupyter/nbconfig/notebook.d/jppype.json"
@@ -81,7 +82,7 @@ exclude = [
 [tool.hatch.build.hooks.jupyter-builder]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
-    "jppype/nbextension/index.js",
+    "jppype/nbextension/static/index.js",
     "jppype/labextension/package.json",
 ]
 skip-if-exists = [
@@ -89,13 +90,17 @@ skip-if-exists = [
     "jppype/labextension/package.json",
 ]
 dependencies = [
-    "hatch-jupyter-builder>=0.5.0",
+    "hatch-jupyter-builder>=0.8.1",
 ]
+build-function = "hatch_jupyter_builder.npm_builder"
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"
 path = "./ts-src/"
 source_dir = "./ts-src/"
+npm = [
+    "yarn",
+]
 
 
 [tool.tbump]
@@ -118,10 +123,6 @@ version_template = "{major}.{minor}.{patch}"
 message_template = "Bump to {new_version}"
 tag_template = "v{new_version}"
 
-
-[tool.black]
-line-length = 120
-
 [tool.ruff]
 # Enable flake8-bugbear (`B`) rules.
 select = ["E", "F", "B", "I"]
@@ -129,3 +130,6 @@ line-length = 120
 
 # Avoid trying to fix flake8-bugbear (`B`) violations.
 unfixable = ["B"]
+
+[tool.ruff.per-file-ignores]
+"__init__.py" = ["E402", "F401", "F403"]

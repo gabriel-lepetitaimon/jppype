@@ -32,14 +32,14 @@ module.exports = (env, argv) => {
         {
             entry: './src/extension.ts',
             output: {
-                filename: 'extension.js',
-                path: path.resolve(__dirname, '..', 'jppype', 'nbextension'),
+                filename: 'index.js',
+                path: path.resolve(__dirname, '..', 'jppype', 'nbextension', 'static'),
                 libraryTarget: 'amd',
             },
             module: {
                 rules: rules
             },
-            devtool,
+            devtool: 'source-map',
             externals,
             resolve,
         },
@@ -81,7 +81,7 @@ module.exports = (env, argv) => {
                 library: "jppype",
                 publicPath: '', // Set in amd-public-path.js
             },
-            devtool,
+            devtool: 'source-map',
             module: {
                 rules: rules
             },
