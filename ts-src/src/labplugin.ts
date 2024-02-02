@@ -1,22 +1,23 @@
 // Copyright (c) Gabriel Lepetit-Aimon
 // Distributed under the terms of the Modified BSD License.
 
-import { Application, IPlugin } from '@phosphor/application';
-import { Widget } from '@phosphor/widgets';
-import { IJupyterWidgetRegistry } from '@jupyter-widgets/base';
+import { IJupyterWidgetRegistry } from "@jupyter-widgets/base";
+import { ICommandPalette } from "@jupyterlab/apputils";
+import { Application, IPlugin } from "@phosphor/application";
+import { Widget } from "@phosphor/widgets";
 
-import * as widgetExports from './widgets';
+import * as widgetExports from "./widgets";
 
-import { MODULE_NAME, MODULE_VERSION } from './version';
-import { initializeJApp } from './ipywidgets/jbasewidget';
+import { initializeJApp } from "./ipywidgets/jbasewidget";
+import { MODULE_NAME, MODULE_VERSION } from "./version";
 
 /**
  * Register the plugin.
  */
-const EXTENSION_ID = 'jppype:plugin';
+const EXTENSION_ID = "jppype:plugin";
 const jppypeWidgetsPlugin: IPlugin<Application<Widget>, void> = {
   id: EXTENSION_ID,
-  requires: [IJupyterWidgetRegistry],
+  requires: [IJupyterWidgetRegistry, ICommandPalette],
   activate: activateWidgetExtension,
   autoStart: true,
 } as unknown as IPlugin<Application<Widget>, void>;
@@ -30,9 +31,10 @@ export default jppypeWidgetsPlugin;
  */
 function activateWidgetExtension(
   app: Application<Widget>,
-  registry: IJupyterWidgetRegistry
+  registry: IJupyterWidgetRegistry,
+  palette: ICommandPalette
 ): void {
-  initializeJApp(app);
+  initializeJApp(app, palette);
 
   registry.registerWidget({
     name: MODULE_NAME,

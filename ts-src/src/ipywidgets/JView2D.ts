@@ -1,44 +1,76 @@
-import { DOMWidgetModel, ISerializers } from '@jupyter-widgets/base';
-import React from 'react';
-import ImageViewerWidget from '../react-widgets/ImageViewer';
-import ReactDOM from 'react-dom';
-import { JBaseWidget, createUseModelState, JModel } from './jbasewidget';
-import { rect_serializer, transform_serializer } from './serializers';
-import { Transform } from '../utils/zoom-pan-handler';
-import { Point, Rect } from '../utils/point';
+import { DOMWidgetModel, ISerializers } from "@jupyter-widgets/base";
+import React from "react";
+import ReactDOM from "react-dom";
+import ImageViewerWidget from "../react-widgets/ImageViewer";
+import { Point, Rect } from "../utils/point";
+import { SceneMouseEvent, Transform } from "../utils/zoom-pan-handler";
+import { JBaseWidget, JModel, createUseModelState } from "./jbasewidget";
+import { rect_serializer, transform_serializer } from "./serializers";
 
 /**************************************************************************
  *              --- WIDGET ---
  **************************************************************************/
 
 export class JView2D extends JBaseWidget {
-  render(): void {
-    this.el.classList.add('custom-widget');
-    this.el.classList.add('maximizing-widget');
+  protected renderJWidget(el: HTMLElement): void {
+    el.classList.add("custom-widget");
+    el.classList.add("maximizing-widget");
+    el.tabIndex = 0; // to be able to focus
 
-    if (this.model === undefined)
-      return;
+    if (this.model === undefined) return;
+
+    const castEvent = (ev: SceneMouseEvent) => {
+      const modifiers: string[] = [];
+      if (ev.altKey) modifiers.push("alt");
+      if (ev.metaKey) modifiers.push("meta");
+      if (ev.ctrlKey) modifiers.push("ctrl");
+      if (ev.shiftKey) modifiers.push("shift");
+
+      return {
+        x: ev.cursor.x,
+        y: ev.cursor.y,
+        modifiers: modifiers,
+        button: ev.button,
+      };
+    };
 
     const component = React.createElement(ImageViewerWidget, {
       model: this.model as JView2DModel,
       events: {
         onClick: (ev) => {
-          const modifiers: string[] = [];
-          if (ev.altKey) modifiers.push('alt');
-          if (ev.metaKey) modifiers.push('meta');
-          if (ev.ctrlKey) modifiers.push('ctrl');
-          if (ev.shiftKey) modifiers.push('shift');
-
-          this.send_event('onclick', {
-            x: ev.cursor.x,
-            y: ev.cursor.y,
-            modifiers: modifiers,
-            button: ev.button,
-          });
+          this.send_event("onclick", castEvent(ev));
+        },
+        onMouseEnter: (ev) => {
+          this.setActive(true);
+          this.send_event("onmouseenter", castEvent(ev));
+        },
+        onMouseLeave: (ev) => {
+          this.setActive(false);
+          this.send_event("onmouseleave", castEvent(ev));
+        },
+        withMouseDownOrClick: () => {
+          el.focus();
         },
       },
     });
-    ReactDOM.render(component, this.el);
+    ReactDOM.render(component, el);
+  }
+
+  static {
+    JView2D.addCommand("jview2d:toggle-labels", {
+      execute: (widget) => {
+        const layers_opts = widget.model.get("_layers_options");
+        const layers_data = widget.model.get("_layers_data");
+        for (const name in layers_opts) {
+          if (layers_data[name].type !== "image") layers_opts[name].visible = !layers_opts[name].visible;
+        }
+        widget.model.set("_layers_options", layers_opts);
+        widget.model.save_changes();
+      },
+      shortcut: ["O"],
+      label: "Toggle Labels",
+      isGlobal: false,
+    });
   }
 }
 
@@ -69,10 +101,8 @@ export type JView2DState = {
 };
 
 export const layers_data_serializer = {
-  deserialize: (value: {
-    [name: string]: DataView;
-  }): { [name: string]: LayerData } => {
-    const decoder = new TextDecoder('ascii');
+  deserialize: (value: { [name: string]: DataView }): { [name: string]: LayerData } => {
+    const decoder = new TextDecoder("ascii");
     const r: { [name: string]: LayerData } = {};
     for (const name in value) {
       r[name] = JSON.parse(decoder.decode(value[name]));
@@ -82,15 +112,13 @@ export const layers_data_serializer = {
 };
 
 export const layers_options_serializer = {
-  deserialize: (value: {
-    [name: string]: string;
-  }): { [name: string]: LayerOptions } => {
+  deserialize: (value: { [name: string]: string }): { [name: string]: LayerOptions } => {
     const r: { [name: string]: LayerOptions } = {};
     for (const name in value) {
       const json = JSON.parse(value[name]);
       r[name] = {
         ...json,
-        domain: Rect.fromTuple(json['domain'])
+        domain: Rect.fromTuple(json["domain"]),
       };
     }
     return r;
@@ -98,27 +126,27 @@ export const layers_options_serializer = {
 };
 
 export class JView2DModel extends JModel {
-  protected view_name = 'JView2D';
-  protected model_name = 'JView2DModel';
+  protected view_name = "JView2D";
+  protected model_name = "JView2DModel";
 
   get defaultState(): any {
     return defaultState;
   }
 
   get layers_data(): { [name: string]: LayerData } {
-    return this.get('_layers_data');
+    return this.get("_layers_data");
   }
 
   get linkedTransformGroup(): string | null {
-    return this.get('linkedTransformGroup');
+    return this.get("linkedTransformGroup");
   }
 
   get layers_options(): { [name: string]: LayerOptions } {
-    return this.get('_layers_options');
+    return this.get("_layers_options");
   }
 
   get domain(): Rect {
-    return this.get('_domain');
+    return this.get("_domain");
   }
 
   static serializers: ISerializers = {

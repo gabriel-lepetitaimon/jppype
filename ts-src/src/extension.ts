@@ -9,8 +9,21 @@
 // url for the notebook is not known at build time and is therefore computed
 // dynamically.
 // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+/* 
 (window as any).__webpack_public_path__ =
   document.querySelector('body')!.getAttribute('data-base-url') +
   'nbextensions/jppype';
+*/
+
+// Configure requirejs
+if ((window as any).require) {
+  (window as any).require.config({
+      map: {
+          "*" : {
+              "{{ cookiecutter.npm_package_name }}": "nbextensions/{{ cookiecutter.npm_package_name }}/index",
+          }
+      }
+  });
+}
 
 export * from './index';

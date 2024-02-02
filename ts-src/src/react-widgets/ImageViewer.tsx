@@ -1,13 +1,13 @@
-import React, { useMemo, useRef } from 'react';
-import { useModelEvent, JModelContext } from '../ipywidgets/jbasewidget';
-import { JView2DModel } from '../ipywidgets/JView2D';
+import React, { useMemo, useRef } from "react";
+import { JView2DModel } from "../ipywidgets/JView2D";
+import { JModelContext, useModelEvent } from "../ipywidgets/jbasewidget";
+import { Point, Rect } from "../utils/point";
 import {
-  SceneMouseEvent,
+  MouseEventsListener,
   Transform,
   useSceneMouseEventListener,
   useZoomTransform,
-} from '../utils/zoom-pan-handler';
-import {Point, Rect} from '../utils/point';
+} from "../utils/zoom-pan-handler";
 /* import {
   Divider,
   IconButton,
@@ -23,28 +23,21 @@ import FullscreenIcon from '@mui/icons-material/Fullscreen';
 import LinkIcon from '@mui/icons-material/Link';
 import SettingsIcon from '@mui/icons-material/Settings';
 import VerticalSplitIcon from '@mui/icons-material/VerticalSplit'; */
-import { ThemeProvider } from '@mui/material/styles';
+import { ThemeProvider } from "@mui/material/styles";
 
-import RulerAxis from '../react-components/RulerAxis';
-import View2DRender from '../react-components/View2DRender';
+import RulerAxis from "../react-components/RulerAxis";
+import View2DRender from "../react-components/View2DRender";
 
-import { useTheme } from '../utils/mui';
-import '../../css/ImageViewerWidger.css';
-import { Observable } from 'rxjs';
-import { create } from 'zustand';
-import { subscribeWithSelector } from 'zustand/middleware';
-import {
-  instantiatedStore,
-  synchronizableStates,
-} from '../utils/zustand-utils';
-
-interface EventsHandler {
-  onClick?: (ev: SceneMouseEvent) => void;
-}
+import { Observable } from "rxjs";
+import { create } from "zustand";
+import { subscribeWithSelector } from "zustand/middleware";
+import "../../css/ImageViewerWidger.css";
+import { useTheme } from "../utils/mui";
+import { instantiatedStore, synchronizableStates } from "../utils/zustand-utils";
 
 interface View2DProps {
   model: JView2DModel;
-  events?: EventsHandler;
+  events?: MouseEventsListener;
 }
 
 interface WidgetState {
@@ -57,7 +50,7 @@ const useImageViewerStore = instantiatedStore(() =>
       subscribeWithSelector(() => ({
         transform: {
           center: new Point(0.5, 0.5),
-          coord: 'relative',
+          coord: "relative",
           zoom: 0,
         } as Transform,
       }))
@@ -69,7 +62,7 @@ function View2D(props: View2DProps) {
   // --- STATES ---
   const ref = useRef<HTMLDivElement | null>(null);
   // const [layers] = JView2DModel.use('_layers_data');
-  const [_] = JView2DModel.use('_loading');
+  const [_] = JView2DModel.use("_loading");
 
   const model = props.model;
   const viewerStore = useImageViewerStore(model.instanceID);
@@ -79,48 +72,42 @@ function View2D(props: View2DProps) {
 
   let sceneRect = Rect.EMPTY;
   Object.values(layers_options).forEach((layer) => {
-      sceneRect = sceneRect.union(layer.domain);
+    sceneRect = sceneRect.union(layer.domain);
   });
 
   useMemo(() => {
     viewerStore.setSync(props.model.linkedTransformGroup);
   }, [props.model.linkedTransformGroup]);
 
-  const syncTransform: [Observable<Transform>, (t: Transform) => void] =
-    useMemo(() => {
-      let lastValue: Transform | undefined = undefined;
-      const observable = new Observable<Transform>((subcriber) => {
-        viewerStore.subscribe(
-          (s: WidgetState) => s.transform,
-          (t: Transform) => {
-            props.model.set('_transform', t);
-            props.model.saveWithTimeout();
-            if (t && lastValue !== t) {
-              subcriber.next(t);
-              lastValue = t;
-            }
+  const syncTransform: [Observable<Transform>, (t: Transform) => void] = useMemo(() => {
+    let lastValue: Transform | undefined = undefined;
+    const observable = new Observable<Transform>((subcriber) => {
+      viewerStore.subscribe(
+        (s: WidgetState) => s.transform,
+        (t: Transform) => {
+          props.model.set("_transform", t);
+          props.model.saveWithTimeout();
+          if (t && lastValue !== t) {
+            subcriber.next(t);
+            lastValue = t;
           }
-        );
-      });
+        }
+      );
+    });
 
-      const observer = (t: Transform) => {
-        lastValue = t;
-        viewerStore.setState({ transform: t });
-
-      };
-      return [observable, observer];
-    }, []);
-
-  const userEvents = {
-    onClick: props.events?.onClick,
-  };
+    const observer = (t: Transform) => {
+      lastValue = t;
+      viewerStore.setState({ transform: t });
+    };
+    return [observable, observer];
+  }, []);
 
   const zoomTransform = useZoomTransform(ref, sceneRect, 50, domain, syncTransform);
-  const cursorPos = useSceneMouseEventListener(zoomTransform, userEvents);
+  const cursorPos = useSceneMouseEventListener(zoomTransform, props.events);
 
-  useModelEvent('change:_target_transform', (model) => {
+  useModelEvent("change:_target_transform", (model) => {
     zoomTransform.dispatch({
-      transform: model.get('_target_transform'),
+      transform: model.get("_target_transform"),
       animation: { duration: 500 },
     });
   });
@@ -140,12 +127,12 @@ function View2D(props: View2DProps) {
     zoomTransform.dispatch({
       center: new Point(center, zoomTransform.center.y),
     });
-  }
+  };
   const setCenterVertically = (center: number): void => {
     zoomTransform.dispatch({
       center: new Point(zoomTransform.center.x, center),
     });
-  }
+  };
 
   // --- STYLE ---
   const rulerProps = {
@@ -154,7 +141,7 @@ function View2D(props: View2DProps) {
   };
 
   const widgetStyle: React.CSSProperties = {
-    display: 'grid',
+    display: "grid",
     gridTemplateColumns: `${rulerProps.thickness}px auto`,
     gridTemplateRows: `${rulerProps.thickness}px auto`,
   };
@@ -165,44 +152,43 @@ function View2D(props: View2DProps) {
   const sceneTransform: React.CSSProperties = {
     width: `${zoomTransform.sceneRect.width * zoomTransform.scale}px`,
     height: `${zoomTransform.sceneRect.height * zoomTransform.scale}px`,
-    position: 'absolute',
-    left: `calc(50% ${(cx) < 0 ? '+' : '-'} ${Math.abs(cx) * zoomTransform.scale}px)`,
-    top: `calc(50% ${cy < 0 ? '+' : '-'} ${Math.abs(cy) * zoomTransform.scale}px)`,
+    position: "absolute",
+    left: `calc(50% ${cx < 0 ? "+" : "-"} ${Math.abs(cx) * zoomTransform.scale}px)`,
+    top: `calc(50% ${cy < 0 ? "+" : "-"} ${Math.abs(cy) * zoomTransform.scale}px)`,
   };
-
 
   // --- RENDER ---
   return (
     <div className="ImageViewerWidget" style={widgetStyle}>
       <RulerAxis
-        orientation={'horizontal'}
+        orientation={"horizontal"}
         center={zoomTransform.center.x}
         cursorPos={cursorPos?.x}
         onPanCenter={panHorizontally}
         onSetCenter={setCenterHorizontally}
-        axisInterval={{start: zoomTransform.sceneDomain.left, end: zoomTransform.sceneDomain.right}}
+        axisInterval={{ start: zoomTransform.sceneDomain.left, end: zoomTransform.sceneDomain.right }}
         style={{ gridRow: 1, gridColumn: 2 }}
         {...rulerProps}
       />
       <RulerAxis
-        orientation={'vertical'}
+        orientation={"vertical"}
         center={zoomTransform.center.y}
         cursorPos={cursorPos?.y}
         onPanCenter={panVertically}
         onSetCenter={setCenterVertically}
-        axisInterval={{start: zoomTransform.sceneDomain.top, end: zoomTransform.sceneDomain.bottom}}
+        axisInterval={{ start: zoomTransform.sceneDomain.top, end: zoomTransform.sceneDomain.bottom }}
         style={{ gridRow: 2, gridColumn: 1 }}
         {...rulerProps}
       />
 
-      <div ref={ref} style={{ gridRow: 2, gridColumn: 2, cursor: 'crosshair' }}>
-        <div className={'ImageViewport'}>
+      <div ref={ref} style={{ gridRow: 2, gridColumn: 2, cursor: "crosshair" }}>
+        <div className={"ImageViewport"}>
           <div style={sceneTransform}>
             <View2DRender
-                layers={layers_data}
-                options={layers_options}
-                sceneDomain={sceneRect}
-                scale={zoomTransform.scale}
+              layers={layers_data}
+              options={layers_options}
+              sceneDomain={sceneRect}
+              scale={zoomTransform.scale}
             />
           </div>
         </div>
