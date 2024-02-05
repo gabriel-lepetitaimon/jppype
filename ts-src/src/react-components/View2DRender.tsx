@@ -1,7 +1,13 @@
-import { LayerData, LayerOptions } from '../ipywidgets/JView2D';
+import {
+  CSSProperties,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+} from "react";
+import { LayerData, LayerOptions } from "../ipywidgets/JView2D";
+import { CMapRGBA, cmap2Hexlookup, cmap2RGBAlookup } from "../utils/color";
 import { Rect } from "../utils/point";
-import { useEffect, useMemo, useRef, useLayoutEffect } from "react";
-import { CMapRGBA, cmap2RGBAlookup, cmap2Hexlookup } from "../utils/color";
 
 interface View2DRenderProps {
   layers: { [name: string]: LayerData };
@@ -23,35 +29,42 @@ export default function View2DRender(props: View2DRenderProps) {
   for (const name of zIndex.map((z) => z.name)) {
     const data = props.layers[name];
     const opt = props.options[name];
-    const pixelSize = props.scale * opt.domain.width / props.sceneDomain.width;
+    const pixelSize =
+      (props.scale * opt.domain.width) / props.sceneDomain.width;
 
     switch (data.type) {
-      case 'image':
+      case "image":
         layers.push(
           <ImageLayer
-            data={data} options={opt}
+            data={data}
+            options={opt}
             sceneDomain={props.sceneDomain}
             pixelSize={pixelSize}
             key={name}
-          />);
+          />
+        );
         break;
-      case 'label':
+      case "label":
         layers.push(
           <LabelLayer
-            data={data} options={opt}
+            data={data}
+            options={opt}
             sceneDomain={props.sceneDomain}
             key={name}
             pixelSize={pixelSize}
-          />);
+          />
+        );
         break;
-      case 'graph':
+      case "graph":
         layers.push(
           <GraphLayer
-            data={data} options={opt}
+            data={data}
+            options={opt}
             sceneDomain={props.sceneDomain}
             pixelSize={pixelSize}
             key={name}
-          />);
+          />
+        );
         break;
     }
   }
@@ -59,32 +72,42 @@ export default function View2DRender(props: View2DRenderProps) {
   return <>{layers}</>;
 }
 
-
-function ImageLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
+export function ImageLayer(props: {
+  data: LayerData;
+  options: LayerOptions;
+  sceneDomain: Rect;
+  pixelSize: number;
+}) {
   const { data, options, sceneDomain } = props;
 
-  const pixelSize = options.domain.width / data.infos.width * props.pixelSize;
+  const pixelSize = (options.domain.width / data.infos.width) * props.pixelSize;
 
   return (
     <img
       src={data.data}
       alt={options.label}
       style={{
-        imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
+        imageRendering: pixelSize < 7 ? "auto" : "pixelated",
         ...getLayerStyle(options, sceneDomain),
       }}
     />
   );
 }
 
-function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
+export function LabelLayer(props: {
+  data: LayerData;
+  options: LayerOptions;
+  sceneDomain: Rect;
+  pixelSize: number;
+}) {
   const { data, options, sceneDomain } = props;
 
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const cMap = useMemo(
     () => cmap2RGBAlookup(data.infos.labels, options.cmap),
-    [data.infos.label, options.cmap]);
+    [data.infos.label, options.cmap]
+  );
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -93,22 +116,30 @@ function LabelLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     if (ctx == null) return;
 
     drawLabels(canvas, data.data, cMap);
-  }, [data.data, options.cmap])
+  }, [data.data, options.cmap]);
 
-  const pixelSize = options.domain.width / (canvasRef.current?.width ?? options.domain.width) * props.pixelSize;
+  const pixelSize =
+    (options.domain.width /
+      (canvasRef.current?.width ?? options.domain.width)) *
+    props.pixelSize;
 
   return (
     <canvas
       ref={canvasRef}
       style={{
-        imageRendering: pixelSize < 7 ? 'auto' : 'pixelated',
+        imageRendering: pixelSize < 7 ? "auto" : "pixelated",
         ...getLayerStyle(options, sceneDomain),
       }}
-    />);
+    />
+  );
 }
 
-
-function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain: Rect, pixelSize: number }) {
+export function GraphLayer(props: {
+  data: LayerData;
+  options: LayerOptions;
+  sceneDomain: Rect;
+  pixelSize: number;
+}) {
   const { data, options, sceneDomain } = props;
   const { opacity } = options;
 
@@ -117,35 +148,61 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
   const nbNodes = data.infos.nbNodes;
   const nodeCMap = useMemo(
     () => cmap2Hexlookup(nbNodes, options.nodes_cmap),
-    [nbNodes, options.nodes_cmap]);
+    [nbNodes, options.nodes_cmap]
+  );
 
   const nodes = useMemo(
-    () => data.data.nodes_yx.map((yx: [number, number], i: number) => {
-      const [y, x] = yx;
-      const color = nodeCMap[i + 1];
+    () =>
+      data.data.nodes_yx.map((yx: [number, number], i: number) => {
+        const [y, x] = yx;
+        const color = nodeCMap[i + 1];
 
-      return (
-        <g key={i}>
-          <circle cx={x + 0.5} cy={y + 0.5} r={4.5 / props.pixelSize} fill={color}
-            stroke="white" strokeWidth={1 / props.pixelSize}>
-            <title>Node {i}</title>
-          </circle>
-          {options.node_labels_visible
-            ? <text x={x + 0.5 + 7 / props.pixelSize} y={y + 0.5 + 7 / props.pixelSize} fill={color}
-              fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
-            : undefined}
-        </g>);
-    }), [data.data.nodes_yx, options.nodes_cmap, props.pixelSize, options.node_labels_visible]);
+        return (
+          <g key={i}>
+            <circle
+              cx={x + 0.5}
+              cy={y + 0.5}
+              r={4.5 / props.pixelSize}
+              fill={color}
+              stroke="white"
+              strokeWidth={1 / props.pixelSize}
+            >
+              <title>Node {i}</title>
+            </circle>
+            {options.node_labels_visible ? (
+              <text
+                x={x + 0.5 + 7 / props.pixelSize}
+                y={y + 0.5 + 7 / props.pixelSize}
+                fill={color}
+                fontSize={13 / props.pixelSize}
+                fontFamily={"sans-serif"}
+                fontWeight={"bold"}
+              >
+                {i}
+              </text>
+            ) : undefined}
+          </g>
+        );
+      }),
+    [
+      data.data.nodes_yx,
+      options.nodes_cmap,
+      props.pixelSize,
+      options.node_labels_visible,
+    ]
+  );
   const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
   const nbEdges = adjList.length;
   const edgeRGBACMap = useMemo(
     () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
-    [nbEdges, options.edges_cmap]);
+    [nbEdges, options.edges_cmap]
+  );
 
   const edgeHexCMap = useMemo(
     () => cmap2Hexlookup(nbEdges, options.edges_cmap),
-    [nbEdges, options.edges_cmap]);
+    [nbEdges, options.edges_cmap]
+  );
 
   const displayEdgeMap = data.data.edgeMap != null && options.edge_map_visible;
   const edges = useMemo(() => {
@@ -156,24 +213,45 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
         const [y1, x1] = node1_yx;
         const [y2, x2] = node2_yx;
         const color = edgeHexCMap[i + 1];
-        return <g key={i}>
-          <line x1={x1 + 0.5} y1={y1 + 0.5} x2={x2 + 0.5} y2={y2 + 0.5}
-            stroke={color} strokeWidth={3 / props.pixelSize}
-            opacity={options.edges_opacity}>
-            <title> Edge {i} </title>
-          </line>
-          {options.edge_labels_visible
-            ? <text x={(x1 + x2) / 2 + 7 / props.pixelSize} y={(y1 + y2) / 2 + 7 / props.pixelSize}
-              fill={color}
-              textDecoration={"overline"}
-              fontSize={13 / props.pixelSize} fontFamily={"sans-serif"} fontWeight={"bold"}>{i}</text>
-            : undefined}
-        </g>
+        return (
+          <g key={i}>
+            <line
+              x1={x1 + 0.5}
+              y1={y1 + 0.5}
+              x2={x2 + 0.5}
+              y2={y2 + 0.5}
+              stroke={color}
+              strokeWidth={3 / props.pixelSize}
+              opacity={options.edges_opacity}
+            >
+              <title> Edge {i} </title>
+            </line>
+            {options.edge_labels_visible ? (
+              <text
+                x={(x1 + x2) / 2 + 7 / props.pixelSize}
+                y={(y1 + y2) / 2 + 7 / props.pixelSize}
+                fill={color}
+                textDecoration={"overline"}
+                fontSize={13 / props.pixelSize}
+                fontFamily={"sans-serif"}
+                fontWeight={"bold"}
+              >
+                {i}
+              </text>
+            ) : undefined}
+          </g>
+        );
       });
     } else {
       return [];
     }
-  }, [displayEdgeMap, props.pixelSize, options.edges_opacity, options.edge_labels_visible, options.edges_cmap]);
+  }, [
+    displayEdgeMap,
+    props.pixelSize,
+    options.edges_opacity,
+    options.edge_labels_visible,
+    options.edges_cmap,
+  ]);
 
   const edgeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   useLayoutEffect(() => {
@@ -187,10 +265,13 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
     } else {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-  }, [displayEdgeMap, data.data.edgeMap, options.edges_cmap])
+  }, [displayEdgeMap, data.data.edgeMap, options.edges_cmap]);
 
   const layerStyle = getLayerStyle(options, sceneDomain);
-  const pixelSize = options.domain.width / (edgeCanvasRef.current?.width ?? options.domain.width) * props.pixelSize;
+  const pixelSize =
+    (options.domain.width /
+      (edgeCanvasRef.current?.width ?? options.domain.width)) *
+    props.pixelSize;
 
   return (
     <>
@@ -198,44 +279,47 @@ function GraphLayer(props: { data: LayerData; options: LayerOptions; sceneDomain
         ref={edgeCanvasRef}
         style={{
           ...layerStyle,
-          imageRendering: pixelSize > 7 ? 'crisp-edges' : 'pixelated',
+          imageRendering: pixelSize > 7 ? "crisp-edges" : "pixelated",
           opacity: options.edges_opacity * opacity,
         }}
       />
-      <svg xmlns={'http://www.w3.org/2000/svg'}
+      <svg
+        xmlns={"http://www.w3.org/2000/svg"}
         viewBox={`${nodesDomain.left} ${nodesDomain.top} ${nodesDomain.width} ${nodesDomain.height}`}
-        preserveAspectRatio={'none'}
+        preserveAspectRatio={"none"}
         style={layerStyle}
       >
         {edges}
         {nodes}
       </svg>
-    </>);
+    </>
+  );
 }
 
-function getLayerStyle(options: LayerOptions, sceneDomain: Rect): React.CSSProperties {
+function getLayerStyle(
+  options: LayerOptions,
+  sceneDomain: Rect
+): CSSProperties {
   const { domain, opacity, visible, blend_mode } = options;
 
-
-
   return {
-    top: `${(domain.top - sceneDomain.top) / sceneDomain.height * 100}%`,
-    left: `${(domain.left - sceneDomain.left) / sceneDomain.width * 100}%`,
-    width: `${domain.width / sceneDomain.width * 100}%`,
-    height: `${domain.height / sceneDomain.height * 100}%`,
-    position: 'absolute',
+    top: `${((domain.top - sceneDomain.top) / sceneDomain.height) * 100}%`,
+    left: `${((domain.left - sceneDomain.left) / sceneDomain.width) * 100}%`,
+    width: `${(domain.width / sceneDomain.width) * 100}%`,
+    height: `${(domain.height / sceneDomain.height) * 100}%`,
+    position: "absolute",
     mixBlendMode: blend_mode as any,
     opacity: opacity * (visible ? 1 : 0),
   };
 }
 
-
 function colorizeLabelInplace(imageData: ImageData, cmapLookup: CMapRGBA) {
   for (let i = 0; i < imageData.data.length; i += 4) {
-    const v = imageData.data[i]
-      | (imageData.data[i + 1] << 8)
-      | (imageData.data[i + 2] << 16)
-      | ((255 - imageData.data[i + 3]) << 24);
+    const v =
+      imageData.data[i] |
+      (imageData.data[i + 1] << 8) |
+      (imageData.data[i + 2] << 16) |
+      ((255 - imageData.data[i + 3]) << 24);
 
     if (v == 0) {
       imageData.data[i + 3] = 0;
@@ -251,7 +335,11 @@ function colorizeLabelInplace(imageData: ImageData, cmapLookup: CMapRGBA) {
   }
 }
 
-function drawLabels(canvas: HTMLCanvasElement, imgSrc: string, cmapLookup: CMapRGBA) {
+function drawLabels(
+  canvas: HTMLCanvasElement,
+  imgSrc: string,
+  cmapLookup: CMapRGBA
+) {
   const ctx = canvas.getContext("2d");
   if (ctx == null) return;
 
@@ -264,6 +352,6 @@ function drawLabels(canvas: HTMLCanvasElement, imgSrc: string, cmapLookup: CMapR
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
     colorizeLabelInplace(imageData, cmapLookup);
     ctx.putImageData(imageData, 0, 0);
-  }
+  };
   img.src = imgSrc;
 }

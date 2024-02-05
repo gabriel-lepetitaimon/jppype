@@ -1,6 +1,6 @@
 import { DOMWidgetModel, ISerializers } from "@jupyter-widgets/base";
-import React from "react";
-import ReactDOM from "react-dom";
+import { createElement } from "react";
+import { render } from "react-dom";
 import ImageViewerWidget from "../react-widgets/ImageViewer";
 import { Point, Rect } from "../utils/point";
 import { SceneMouseEvent, Transform } from "../utils/zoom-pan-handler";
@@ -34,7 +34,7 @@ export class JView2D extends JBaseWidget {
       };
     };
 
-    const component = React.createElement(ImageViewerWidget, {
+    const component = createElement(ImageViewerWidget, {
       model: this.model as JView2DModel,
       events: {
         onClick: (ev) => {
@@ -53,7 +53,7 @@ export class JView2D extends JBaseWidget {
         },
       },
     });
-    ReactDOM.render(component, el);
+    render(component, el);
   }
 
   static {

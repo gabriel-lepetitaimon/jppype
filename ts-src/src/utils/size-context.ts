@@ -1,11 +1,11 @@
 import useResizeObserver from '@react-hook/resize-observer';
-import React, { RefObject } from 'react';
+import { RefObject, useLayoutEffect, useState } from 'react';
 import { Point } from './point';
 
 export default function useSize(target: RefObject<HTMLElement>): Point {
-  const [size, setSize] = React.useState(new Point(0, 0));
+  const [size, setSize] = useState(new Point(0, 0));
 
-  React.useLayoutEffect(() => {
+  useLayoutEffect(() => {
     const width = target.current?.getBoundingClientRect().width;
     const height = target.current?.getBoundingClientRect().height;
     setSize(new Point(width, height));

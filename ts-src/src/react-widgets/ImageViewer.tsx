@@ -1,4 +1,4 @@
-import React, { useMemo, useRef } from "react";
+import { CSSProperties, useMemo, useRef } from "react";
 import { JView2DModel } from "../ipywidgets/JView2D";
 import { JModelContext, useModelEvent } from "../ipywidgets/jbasewidget";
 import { Point, Rect } from "../utils/point";
@@ -140,7 +140,7 @@ function View2D(props: View2DProps) {
     scale: zoomTransform.scale,
   };
 
-  const widgetStyle: React.CSSProperties = {
+  const widgetStyle: CSSProperties = {
     display: "grid",
     gridTemplateColumns: `${rulerProps.thickness}px auto`,
     gridTemplateRows: `${rulerProps.thickness}px auto`,
@@ -149,7 +149,7 @@ function View2D(props: View2DProps) {
   const cx = zoomTransform.center.x - zoomTransform.sceneRect.left + zoomTransform.sceneDomain.left;
   const cy = zoomTransform.center.y - zoomTransform.sceneRect.top + zoomTransform.sceneDomain.top;
 
-  const sceneTransform: React.CSSProperties = {
+  const sceneTransform: CSSProperties = {
     width: `${zoomTransform.sceneRect.width * zoomTransform.scale}px`,
     height: `${zoomTransform.sceneRect.height * zoomTransform.scale}px`,
     position: "absolute",
@@ -203,14 +203,14 @@ interface SettingsProps {
 }
 
 function Settings(props: SettingsProps) {
-  const settingsIconStyle: React.CSSProperties = {
+  const settingsIconStyle: CSSProperties = {
     height: props.thickness - 2,
     color: 'var(--jp-inverse-layout-color3)',
   };
 
-  const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
   const open = Boolean(anchorEl);
-  const handleClick = (event: React.MouseEvent<HTMLElement>) => {
+  const handleClick = (event: MouseEvent<HTMLElement>) => {
     setAnchorEl(event.currentTarget);
   };
   const handleClose = () => {

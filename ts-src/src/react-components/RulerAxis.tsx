@@ -1,4 +1,4 @@
-import React, {useMemo, useRef, useState } from 'react';
+import {CSSProperties, useMemo, useRef, useState } from 'react';
 import useSize from '../utils/size-context';
 import '../../css/RulerAxis.css';
 import {useEventListener, captureMouseEvents} from '../utils/event-listener';
@@ -20,7 +20,7 @@ interface AxisRulerProps {
   cursorPos?: number;
   scale: number;
   axisInterval: Interval;
-  style?: React.CSSProperties;
+  style?: CSSProperties;
 }
 
 
@@ -387,7 +387,7 @@ export default function RulerAxis(props: AxisRulerProps): JSX.Element {
           width: hor ? '100%' : thickness,
           '--thickness': thickness,
           ...style,
-        } as React.CSSProperties
+        } as CSSProperties
       }
     >
       <svg
@@ -485,7 +485,7 @@ function TickLabel(props: TickLabelProps): JSX.Element {
     horizontal: props.horizontal,
     tickLength: props.tickLength,
   };
-  let style: React.CSSProperties = {};
+  let style: CSSProperties = {};
   let labelOffset = 0;
 
   if (labelAnchor === 'before') {

@@ -1,4 +1,4 @@
-import { RefObject, useEffect, useLayoutEffect, useMemo, useReducer, useState } from "react";
+import { Dispatch, RefObject, useEffect, useLayoutEffect, useMemo, useReducer, useState } from "react";
 
 import useResizeObserver from "@react-hook/resize-observer";
 import { Observable } from "rxjs";
@@ -980,4 +980,4 @@ interface SyncTransform {
 
 export type TransformAction = SetTransform | SetCenter | Zoom | Pan | EnsureVisible;
 export type ZoomAction = SetSceneRect | SetSceneDefaultRect | SetViewSize | AnimStep | TransformAction | SyncTransform;
-export type ZoomDispatch = React.Dispatch<ZoomAction>;
+export type ZoomDispatch = Dispatch<ZoomAction>;
