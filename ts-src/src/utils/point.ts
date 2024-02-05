@@ -27,6 +27,10 @@ export class Point {
       : new Point(this.x * f, this.y * f);
   }
 
+  half(): Point {
+    return new Point(this.x * .5, this.y * .5);
+  }
+
   interpolate(to: Point, weight: number): Point {
     return new Point(
       this.x * (1 - weight) + to.x * weight,
@@ -224,11 +228,15 @@ export class Rect {
     return new Rect(this.topLeft.clip(r), this.bottomRight.clip(r));
   }
 
-  union(r: Rect): Rect {
-    return Rect.fromXY( Math.min(this.left, r.left),
+  union(r: Rect | Point): Rect {
+    if (r instanceof Point) {
+      return this.union(Rect.fromXY(this.center.x, r.x, this.center.y, r.y));
+    } else {
+      return Rect.fromXY( Math.min(this.left, r.left),
                         Math.max(this.right, r.right),
                         Math.min(this.top, r.top),
                         Math.max(this.bottom, r.bottom));
+    }
   }
 
   pad(padding: Rect | Point | number, outward = false): Rect {
