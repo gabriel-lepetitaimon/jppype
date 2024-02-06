@@ -210,7 +210,7 @@ export default function RulerAxis(props: AxisRulerProps): JSX.Element {
 
             return (
               <g transform={translateAlong(tickPos, hor)} key={pos}>
-                <Tick length={thickness} horizontal={hor} />
+                <Tick length={thickness} tickLength={.15} horizontal={hor} />
               </g>
             );
           }

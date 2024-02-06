@@ -1,5 +1,6 @@
 from ._version import __version__
 from .view2d import View2D, imshow, sync_views
+from .vscode_theming import vscode_theme
 
 
 def _jupyter_labextension_paths():
@@ -15,10 +16,12 @@ def _jupyter_labextension_paths():
         from `src` directory into <jupyter path>/labextensions/<dest> directory
         during widget installation
     """
-    return [{
-        'src': 'labextension',
-        'dest': 'jppype',
-    }]
+    return [
+        {
+            "src": "labextension",
+            "dest": "jppype",
+        }
+    ]
 
 
 def _jupyter_nbextension_paths():
@@ -38,9 +41,4 @@ def _jupyter_nbextension_paths():
     require: Path to importable AMD Javascript module inside the
         <jupyter path>/nbextensions/<dest> directory
     """
-    return [{
-        'section': 'notebook',
-        'src': 'nbextension',
-        'dest': 'jppype',
-        'require': 'jppype/extension'
-    }]
+    return [{"section": "notebook", "src": "nbextension", "dest": "jppype", "require": "jppype/extension"}]
