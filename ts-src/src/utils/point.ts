@@ -49,6 +49,11 @@ export class Point {
     }
   }
 
+  clip_norm(r: number): Point {
+    const f = r / Math.max(this.norm(), r);
+    return f < 1 ? this.multiply(f) : this;
+  }
+
   in(r: Rect | Point, strict = false): boolean {
     if (r instanceof Point) {
       return strict

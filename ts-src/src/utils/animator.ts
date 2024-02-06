@@ -26,8 +26,9 @@ export class Animator<K extends string> {
   protected onStop?: (animator: Animator<K>) => void;
 
   constructor(
-    protected callback: (t: Record<K, AnimableTypes>) => void,
-    opt?: AnimatorOptions<K>
+    protected callback: (t: Record<K, AnimableTypes>, context?: any) => void,
+    opt?: AnimatorOptions<K>,
+    public context?: any
   ) {
     if (opt) {
       this.animations = opt?.animations;
@@ -78,21 +79,24 @@ export class Animator<K extends string> {
   }
 
   run(
-    animations: Record<K, Animation<AnimableTypes>>,
+    animations: Record<K, Animation<AnimableTypes> | null>,
     duration?: number,
     delay?: number,
     globalEasing?: EasingFunction,
-    initialCb = false
+    initialCb = false,
+    context?: any
   ): void {
     this.stop();
-    this.animations = animations;
+    this.animations = Object.fromEntries(
+                        Object.entries(animations).filter(([k, v]) => v !== null)
+                      ) as Record<K, Animation<AnimableTypes>>;
     if (duration) {
       this.duration = duration;
     }
     if (globalEasing) {
       this.globalEasing = globalEasing;
     }
-
+    this.context = context;
     this.start(delay, initialCb);
   }
 
@@ -138,7 +142,9 @@ export class Animator<K extends string> {
   }
 
   restart(initialCb = true): void {
+    const ctx = this.context; 
     this.stop();
+    this.context = ctx;
     this.start(0, initialCb);
   }
 
@@ -163,6 +169,7 @@ export class Animator<K extends string> {
       clearTimeout(this.delayTimer);
       this.delayTimer = null;
     }
+    this.context = undefined;
     if (this.onStop) {
       this.onStop(this);
     }
@@ -177,7 +184,7 @@ export class Animator<K extends string> {
         [k]: this.animations[k].compute(t),
       });
     }
-    this.callback(y as Record<K, AnimableTypes>);
+    this.callback(y as Record<K, AnimableTypes>, this.context);
   }
 }
 

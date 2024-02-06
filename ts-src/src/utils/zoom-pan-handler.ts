@@ -391,16 +391,29 @@ export class ZoomTransform {
 
   constructor(public areaState: ZoomAreaState, transform: Transform) {
     this.animator = new Animator<"center" | "zoom">(
-      (t) => {
-        this.dispatch({
-          animStep: {
-            center: t["center"] as Point,
-            zoom: t["zoom"] as number,
-            coord: "relative",
-          },
-        });
+      (t, ctx) => {
+        if (ctx?.zoomCenter && ctx?.initialTransform ) {
+          this.dispatch({
+            animStep: this.areaState.applyZoom(
+              ctx.initialTransform,
+              (t["zoom"] as number)-ctx.initialTransform.zoom,
+              ctx.zoomCenter,
+              "relative",
+            )
+          });
+        } else {
+          this.dispatch({
+            animStep: {
+              center: t["center"] as Point,
+              zoom: t["zoom"] as number,
+              coord: "relative",
+            },
+          });
+        }
       },
-      { onStop: () => (this.animationTarget = undefined) }
+      { onStop: () => {
+        this.animationTarget = undefined;
+      } }
     );
     this.transform = transform;
   }
@@ -573,11 +586,11 @@ export function useZoomTransform(
 
         if ("animation" in action) {
           // Setup animation if required
-          let easing: EasingFunction = 'linear';
-
-          let centerAnim = action.animation?.centerAnim;
+          let easing: EasingFunction = action.animation?.easing || 'linear';
+          let centerAnim: Animation<Point> | null | undefined = action.animation?.centerAnim;
           const c0 = state.centerInRelativeCoord(prevTr);
           const c1 = state.centerInRelativeCoord(newTr);
+
           if (centerAnim) {
             centerAnim.firstKey.v = c0;
             centerAnim.lastKey.v = c1;
@@ -593,14 +606,8 @@ export function useZoomTransform(
               zoomAnim = Animation.simple(
                 prevTr.zoom,
                 newTr.zoom,
+                'cubicOut'
               );
-              easing = 'quadraticOut';
-              if (!centerAnim) {
-                centerAnim = new Animation([
-                  { t: 0.2, v: c0},
-                  { t: 1, v: c1 },
-                ]);
-              }
             } else if (
               newTr.zoom - prevTr.zoom < -0.5 || // Small zoom in
               state
@@ -614,14 +621,8 @@ export function useZoomTransform(
               zoomAnim = Animation.simple(
                 prevTr.zoom,
                 newTr.zoom,
+                'cubicInOut'
               );
-              easing = 'quadraticOut';
-              if (!centerAnim) {
-                centerAnim = new Animation([
-                  { t: 0, v: c0},
-                  { t: 0.9, v: c1 },
-                ]);
-              }
             } else {
               // Large Zoom in displacement
               const zoomOut = Math.sqrt(prevTr.zoom + 1) - 1;
@@ -638,9 +639,18 @@ export function useZoomTransform(
               }
             }
           }
-
+          
+          let animatorCtx: any = undefined;
           if (!centerAnim) {
-            centerAnim = Animation.simple(c0, c1);
+            if ('zoomCenter' in action && action?.zoomCenter){
+              animatorCtx = {
+                zoomCenter: zoomTransform.toRelativeCoord(action.zoomCenter, action.zoomCenterCoord),
+                initialTransform: prevTr,
+              } 
+              centerAnim = null;
+            } else {
+              centerAnim = Animation.simple(c0, c1);
+            }
           }
 
           zoomTransform.animator.run(
@@ -650,7 +660,9 @@ export function useZoomTransform(
             },
             action.animation?.duration || 750,
             0, 
-            easing
+            easing,
+            false,
+            animatorCtx
           );
 
           if (action.animation?.cancelable === false) {
@@ -768,6 +780,7 @@ function createSceneWheelEvent(
   cursor: Point,
   viewCursor: Point
 ): SceneWheelEvent {
+  // TODO: Convert deltaX and deltaY depending on ev.deltaMode
   return {
     cursor: cursor,
     viewCursor: viewCursor,
@@ -910,11 +923,20 @@ export function useSceneMouseEventListener(
 
     if (!userEvents?.onWheel) {
       events.onWheel = (ev) => {
-        const zoomAction: ZoomAction = {
+        let zoomAction: ZoomAction = {
           zoom: -ev.deltaY,
           zoomCenter: ev.viewCursor,
           zoomCenterCoord: "view",
         };
+        if(zoomTransform.transform.zoom == zoomTransform.areaState.minZoom && ev.deltaY > 0){
+          const panVector = zoomTransform.toRelativeCoord(zoomTransform.transform.center, zoomTransform.transform.coord)
+                                         .substract(new Point(0.5, 0.5))
+                                         .clip_norm(0.5 * ev.deltaY);                                         
+          zoomAction = {
+            pan: panVector.neg(),
+            coord: "relative",
+          };
+        }
 
         if (Math.abs(ev.deltaY) > 1) {
           zoomTransform.dispatch({
@@ -1065,6 +1087,7 @@ interface ZoomAnimation {
   duration?: number;
   centerAnim?: Animation<Point>;
   scaleAnim?: Animation<number>;
+  easing?: EasingFunction;
   cancelable?: boolean;
 }
 
