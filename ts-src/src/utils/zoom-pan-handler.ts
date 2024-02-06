@@ -10,7 +10,7 @@ import {
 
 import useResizeObserver from "@react-hook/resize-observer";
 import { Observable } from "rxjs";
-import { Animation, Animator } from "./animator";
+import { Animation, Animator, EasingFunction } from "./animator";
 import { ORIGIN, Point, Rect } from "./point";
 
 export interface Transform {
@@ -573,6 +573,8 @@ export function useZoomTransform(
 
         if ("animation" in action) {
           // Setup animation if required
+          let easing: EasingFunction = 'linear';
+
           let centerAnim = action.animation?.centerAnim;
           const c0 = state.centerInRelativeCoord(prevTr);
           const c1 = state.centerInRelativeCoord(newTr);
@@ -591,11 +593,11 @@ export function useZoomTransform(
               zoomAnim = Animation.simple(
                 prevTr.zoom,
                 newTr.zoom,
-                "quadraticOut"
               );
+              easing = 'quadraticOut';
               if (!centerAnim) {
                 centerAnim = new Animation([
-                  { t: 0.2, v: c0, easing: "cubicInOut" },
+                  { t: 0.2, v: c0},
                   { t: 1, v: c1 },
                 ]);
               }
@@ -612,11 +614,11 @@ export function useZoomTransform(
               zoomAnim = Animation.simple(
                 prevTr.zoom,
                 newTr.zoom,
-                "quadraticOut"
               );
+              easing = 'quadraticOut';
               if (!centerAnim) {
                 centerAnim = new Animation([
-                  { t: 0, v: c0, easing: "cubicOut" },
+                  { t: 0, v: c0},
                   { t: 0.9, v: c1 },
                 ]);
               }
@@ -638,7 +640,7 @@ export function useZoomTransform(
           }
 
           if (!centerAnim) {
-            centerAnim = Animation.simple(c0, c1, "cubicInOut");
+            centerAnim = Animation.simple(c0, c1);
           }
 
           zoomTransform.animator.run(
@@ -646,7 +648,9 @@ export function useZoomTransform(
               center: centerAnim,
               zoom: zoomAnim,
             },
-            action.animation?.duration || 750
+            action.animation?.duration || 750,
+            0, 
+            easing
           );
 
           if (action.animation?.cancelable === false) {

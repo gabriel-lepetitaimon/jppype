@@ -13,6 +13,7 @@ interface AnimatorOptions<K extends string> {
 export class Animator<K extends string> {
   public t = 0;
   protected animations?: Record<K, Animation<AnimableTypes>>;
+  protected globalEasing: EasingFunction = 'linear';
   protected _duration = 750;
   protected _freq = 30;
   protected _skipMissedFrames = true;
@@ -80,12 +81,16 @@ export class Animator<K extends string> {
     animations: Record<K, Animation<AnimableTypes>>,
     duration?: number,
     delay?: number,
+    globalEasing?: EasingFunction,
     initialCb = false
   ): void {
     this.stop();
     this.animations = animations;
     if (duration) {
       this.duration = duration;
+    }
+    if (globalEasing) {
+      this.globalEasing = globalEasing;
     }
 
     this.start(delay, initialCb);
@@ -166,9 +171,10 @@ export class Animator<K extends string> {
 
   protected _callback(): void {
     const y = {};
+    const t = ease(this.t/this.duration, 0, 1, this.globalEasing);
     for (const k in this.animations) {
       Object.assign(y, {
-        [k]: this.animations[k].compute(this.t / this.duration),
+        [k]: this.animations[k].compute(t),
       });
     }
     this.callback(y as Record<K, AnimableTypes>);
