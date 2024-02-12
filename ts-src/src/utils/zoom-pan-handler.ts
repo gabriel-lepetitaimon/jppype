@@ -527,7 +527,10 @@ export function useZoomTransform(
 
       // --- Apply action ---
       if ("syncTransform" in action) {
-        newTr = state.constraintTransform(action.syncTransform);
+        newTr = {
+          ...action.syncTransform,
+          zoom: state.constraintZoom(action.syncTransform.zoom)
+        };
         zoomTransform.transform = newTr;
         zoomTransform.animator.stop();
         return [zoomTransform, newTr];
