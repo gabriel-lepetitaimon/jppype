@@ -1,6 +1,6 @@
 {
   "name": "jppype",
-  "version": "0.1.1",
+  "version": "0.2.0alpha1",
   "description": "Custom Jupyter Widgets for ProtoPype.",
   "author": {
     "name": "Gabriel Lepetit-Aimon",

@@ -7,7 +7,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "jppype"
-version = "0.1.1.1"
+version = "0.2.0alpha1"
 description = "JupyterLab extension adding data visualisation widgets."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -40,8 +40,7 @@ classifiers = [
 dependencies = [
     "ipykernel~=6.22.0",
     "ipywidgets~=8.0.5,<9",
-    "numpy~=1.23.5",
-    "opencv-python-headless~=4.7",
+    "numpy",
     "StrEnum",
     "webcolors~=1.13"
 ]
@@ -115,7 +114,7 @@ file = [
 ]
 
 [tool.tbump.version]
-current = "0.1.0.dev0"
+current = "0.2.0.alpha1"
 version_template = "{major}.{minor}.{patch}"
 
 [tool.tbump.git]
