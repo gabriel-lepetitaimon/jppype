@@ -63,7 +63,7 @@ Download the npm dependencies:
 ```bash
 cd ts-src
 npm install
-cd ...
+cd ..
 ```
 
 Upgrade jupyter-lab to version 4.0.0 if necessary:
