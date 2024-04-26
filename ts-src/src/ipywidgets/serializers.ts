@@ -22,16 +22,28 @@ export const point_serializer = {
   serialize: (p: Point): Array<number> => [p.x, p.y],
 };
 
-export const rect_serializer = {
-  deserialize: (p: Array<number>): Rect => {
-    switch (p.length) {
-        case 2:
-            return new Rect(new Point(p[1], p[0]));
-        case 4:
-            const r = Rect.fromTuple(p);
-            return r;
+export const rect_serializer = (nullable=false) => {
+  return {
+    deserialize: (p: Array<number> | null): Rect | null => {
+      if (p === null) {
+          return nullable ? null : Rect.EMPTY;
+      }
+      switch (p.length) {
+          case 2:
+              return new Rect(new Point(p[1], p[0]));
+          case 4:
+              const r = Rect.fromTuple(p);
+              return r;
+      }
+      return Rect.EMPTY;
+    },
+    serialize: (p: Rect | null): Array<number> | null => {
+      if (p === null) {
+          return nullable ? null : [0, 0, 0, 0];
+      } else {
+        return [p.top, p.left, p.height, p.width];
+      }
     }
-    return Rect.EMPTY;
-  },
-  serialize: (p: Rect): Array<number> => [p.top, p.left, p.height, p.width],
+  }
 };
+

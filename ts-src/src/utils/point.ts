@@ -9,7 +9,7 @@ export class Point {
       : new Point(this.x + f, this.y + f);
   }
 
-  substract(f: number | Point): Point {
+  subtract(f: number | Point): Point {
     return f instanceof Point
       ? new Point(this.x - f.x, this.y - f.y)
       : new Point(this.x - f, this.y - f);
@@ -170,7 +170,7 @@ export class Rect {
 
   static fromCenter(center: Point, size: Point): Rect {
     const halfSize = size.divide(2).abs();
-    return new Rect(center.substract(halfSize), center.add(halfSize));
+    return new Rect(center.subtract(halfSize), center.add(halfSize));
   }
 
   static fromDOMRect(r: DOMRect): Rect {
@@ -202,7 +202,7 @@ export class Rect {
   }
 
   get size(): Point {
-    return this.bottomRight.substract(this.topLeft);
+    return this.bottomRight.subtract(this.topLeft);
   }
 
   get center(): Point {
@@ -249,8 +249,8 @@ export class Rect {
     if (padding instanceof Rect) {
       if (outward) {
         padding = new Rect(
-          ORIGIN.substract(padding.topLeft),
-          ORIGIN.substract(padding.bottomRight)
+          ORIGIN.subtract(padding.topLeft),
+          ORIGIN.subtract(padding.bottomRight)
         );
       }
       resultingRect = new Rect(
@@ -259,11 +259,11 @@ export class Rect {
       );
     } else {
       if (outward) {
-        padding = ORIGIN.substract(padding);
+        padding = ORIGIN.subtract(padding);
       }
       resultingRect = new Rect(
         this.topLeft.add(padding),
-        this.bottomRight.substract(padding)
+        this.bottomRight.subtract(padding)
       );
     }
     if (resultingRect.checkPositiveSize()) {
@@ -277,6 +277,13 @@ export class Rect {
     return new Rect(
       this.topLeft.interpolate(to.topLeft, weight),
       this.bottomRight.interpolate(to.bottomRight, weight)
+    );
+  }
+
+  relativeTo(r: Rect): Rect {
+    return new Rect(
+      this.topLeft.subtract(r.topLeft).divide(r.size),
+      this.bottomRight.subtract(r.topLeft).divide(r.size)
     );
   }
 }

@@ -1,7 +1,7 @@
 import { DOMWidgetModel, ISerializers } from "@jupyter-widgets/base";
 import { createElement } from "react";
 import { render } from "react-dom";
-import ImageViewerWidget from "../react-widgets/ImageViewer";
+import ImageViewerWidget from "../react-widgets/View2D";
 import { Point, Rect } from "../utils/point";
 import { SceneMouseEvent, Transform } from "../utils/zoom-pan-handler";
 import { JBaseWidget, JModel, createUseModelState } from "./jbasewidget";
@@ -57,18 +57,14 @@ export class JView2D extends JBaseWidget {
   }
 
   static {
-    JView2D.addCommand("jview2d:toggle-labels", {
+    JView2D.addCommand("jview2d:toggle-foreground", {
       execute: (widget) => {
-        const layers_opts = widget.model.get("_layers_options");
-        const layers_data = widget.model.get("_layers_data");
-        for (const name in layers_opts) {
-          if (layers_data[name].type !== "image") layers_opts[name].visible = !layers_opts[name].visible;
-        }
-        widget.model.set("_layers_options", layers_opts);
+        console.log("toggle-foreground");
+        widget.model.set("_hide_foreground", !widget.model.get("_hide_foreground"));
         widget.model.save_changes();
       },
-      shortcut: ["O"],
-      label: "Toggle Labels",
+      shortcut: ["v"],
+      label: "Toggle Foreground Layers",
       isGlobal: false,
     });
   }
@@ -83,9 +79,13 @@ const defaultState = {
   _loading: false,
   _layers_data: {},
   _layers_options: {},
+  _hide_foreground: false,
   _domain: Rect.EMPTY,
+  _area_selected: null,
   _transform: { center: Point.ORIGIN, zoom: 0 } as Transform,
   _target_transform: { center: Point.ORIGIN, zoom: 0 } as Transform,
+  _left_ruler: true,
+  _top_ruler: true,
   linkedTransform: null,
 };
 
@@ -94,9 +94,13 @@ export type JView2DState = {
   _loading: boolean;
   _layers_data: { [name: string]: LayerData };
   _layers_options: { [name: string]: LayerOptions };
+  _hide_foreground: boolean;
   _domain: Rect;
+  _area_selected: Rect | null;
   _transform: Transform;
   _target_transform: Transform;
+  _left_ruler : boolean;
+  _top_ruler : boolean;
   linkedTransformGroup: string | null;
 };
 
@@ -149,11 +153,16 @@ export class JView2DModel extends JModel {
     return this.get("_domain");
   }
 
+  get areaSelected(): Rect | null {
+    return this.get("_area_selected");
+  }
+
   static serializers: ISerializers = {
     ...DOMWidgetModel.serializers,
     _layers_data: layers_data_serializer,
     _layers_options: layers_options_serializer,
-    _domain: rect_serializer,
+    _domain: rect_serializer(false),
+    _area_selected: rect_serializer(true),
     _transform: transform_serializer,
     _target_transform: transform_serializer,
   };
@@ -169,6 +178,7 @@ export interface LayerData {
 
 export interface LayerOptions {
   visible: boolean;
+  foreground: boolean;
   opacity: number;
   blend_mode: string;
   z_index: number;

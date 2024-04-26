@@ -167,7 +167,7 @@ class ZoomAreaState {
       return this.sceneMainDomain.isEmpty()
         ? new Point(0.5, 0.5)
         : p
-            .substract(this.sceneMainDomain.topLeft)
+            .subtract(this.sceneMainDomain.topLeft)
             .divide(this.sceneMainDomain.size);
     } else if (p instanceof Rect) {
       return this.sceneMainDomain.isEmpty()
@@ -224,7 +224,7 @@ class ZoomAreaState {
           if (this.sceneMainDomain.isEmpty()) return new Point(0.5, 0.5);
 
           return p
-            .substract(this.viewSize.divide(2)) // Center on the view center
+            .subtract(this.viewSize.divide(2)) // Center on the view center
             .divide(this.zoom2scale(t.zoom)) // Scale to scene coordinate
             .divide(this.sceneMainDomain.size) // Scale to relative coordinate (relative to sceneDefaultRect)
             .add(this.centerInRelativeCoord(t)); // Translate accordingly to the scene center
@@ -250,7 +250,7 @@ class ZoomAreaState {
       switch (coord) {
         case "view":
           return p
-            .substract(this.viewSize.divide(2)) // Center on the view center
+            .subtract(this.viewSize.divide(2)) // Center on the view center
             .divide(this.zoom2scale(t.zoom)) // Scale to scene coordinate
             .add(this.centerInSceneCoord(t)); // Translate accordingly to the scene center
         case "relative":
@@ -275,7 +275,7 @@ class ZoomAreaState {
       if (coord === "relative")
         p = this.toSceneCoord(p, t, "relative") as Point; // ensure p is in scene coordinates
       return (p as Point)
-        .substract(this.centerInSceneCoord(t)) // Center on the scene center
+        .subtract(this.centerInSceneCoord(t)) // Center on the scene center
         .multiply(this.zoom2scale(t.zoom)) // Scale to view coordinate
         .add(this.viewSize.divide(2)); // Translate accordingly to the view center
     } else {
@@ -361,13 +361,13 @@ class ZoomAreaState {
       let dCenter: Point; // Translation value
       if (coord === "view") {
         dCenter = zoomCenter
-          .substract(this.viewSize.divide(2)) // Center on the view center
+          .subtract(this.viewSize.divide(2)) // Center on the view center
           .multiply(1 / this.zoom2scale(t.zoom) - 1 / this.zoom2scale(newZoom)); // Scale translation according to the zoom delta
       } else {
         if (coord === "relative") zoomCenter = this.relative2scene(zoomCenter); // Cast zoomCenter to scene coordinates
 
         dCenter = zoomCenter
-          .substract(center) // Center on the view center (in scene coordinates)
+          .subtract(center) // Center on the view center (in scene coordinates)
           .multiply(1 - Math.pow(2, -dZoom)); // Scale translation according to the zoom delta
       }
 
@@ -450,14 +450,14 @@ export class ZoomTransform {
 
   view2scene(p: Point): Point {
     return p
-      .substract(this.areaState.viewSize.divide(2))
+      .subtract(this.areaState.viewSize.divide(2))
       .divide(this.scale)
       .add(this.center);
   }
 
   scene2view(p: Point): Point {
     return p
-      .substract(this.center)
+      .subtract(this.center)
       .multiply(this.scale)
       .add(this.areaState.viewSize.divide(2));
   }
@@ -474,7 +474,7 @@ export class ZoomTransform {
     return this.areaState
       .centerInSceneCoord(this._t)
       .multiply(this.scale)
-      .substract(this.areaState.viewSize.divide(2));
+      .subtract(this.areaState.viewSize.divide(2));
   }
 
   get visibleArea(): Rect {
@@ -615,7 +615,7 @@ export function useZoomTransform(
               newTr.zoom - prevTr.zoom < -0.5 || // Small zoom in
               state
                 .centerInSceneCoord(tr)
-                .substract(state.centerInSceneCoord(newTr))
+                .subtract(state.centerInSceneCoord(newTr))
                 .norm() *
                 zoomTransform.scale <
                 state.viewSize.max() / 2 // or moving to a close target
@@ -853,9 +853,24 @@ interface ClickTimer {
 export function useSceneMouseEventListener(
   zoomTransform: ZoomTransform,
   userEvents?: MouseEventsListener,
-  hoverEvents = true
+  hoverEvents = true,
+  syncCursorPos?: [Observable<Point | null>, (p: Point | null) => void]
 ) {
-  const [cursorPos, setCursorPos] = useState<Point | null>(null);
+  const [cursorPos, setCursorPosState] = useState<Point | null>(null);
+  const setCursorPos = syncCursorPos
+                       ? (p: Point | null) => {
+                          syncCursorPos[1](p); 
+                          setCursorPosState(p);
+                        } 
+                       : setCursorPosState;
+  useLayoutEffect(() => {
+    if (syncCursorPos) {
+      const sub = syncCursorPos[0].subscribe((p) => setCursorPosState(p));
+      return () => {
+        sub.unsubscribe();
+      };
+    }
+  }, [syncCursorPos]);
 
   // --- Default Zoom events Handlers ---
   const events = useMemo(() => {
@@ -863,7 +878,7 @@ export function useSceneMouseEventListener(
 
     if (userEvents?.onMouseDown === undefined) {
       events.onMouseDown = (ev, ctrls) => {
-        if (ev.button === 0 || ev.button === 3) {
+        if (ev.button === 0 || ev.button === 1) {
           ctrls.startPan(ev);
           setCursorPos(null);
         }
@@ -933,7 +948,7 @@ export function useSceneMouseEventListener(
         };
         if(zoomTransform.transform.zoom == zoomTransform.areaState.minZoom && ev.deltaY > 0){
           const panVector = zoomTransform.toRelativeCoord(zoomTransform.transform.center, zoomTransform.transform.coord)
-                                         .substract(new Point(0.5, 0.5))
+                                         .subtract(new Point(0.5, 0.5))
                                          .clip_norm(0.5 * ev.deltaY);                                         
           zoomAction = {
             pan: panVector.neg(),
@@ -971,7 +986,7 @@ export function useSceneMouseEventListener(
       }
       ev.preventDefault();
       const bounds = Rect.fromDOMRect(node.getBoundingClientRect());
-      const viewPos = new Point(ev.clientX, ev.clientY).substract(
+      const viewPos = new Point(ev.clientX, ev.clientY).subtract(
         bounds.topLeft
       );
       const sceneWheelEvent = createSceneWheelEvent(
@@ -994,7 +1009,7 @@ export function useSceneMouseEventListener(
     const mouseEL = (ev: MouseEvent) => {
       ev.preventDefault();
       const bounds = Rect.fromDOMRect(node.getBoundingClientRect());
-      const viewPos = new Point(ev.clientX, ev.clientY).substract(
+      const viewPos = new Point(ev.clientX, ev.clientY).subtract(
         bounds.topLeft
       );
       const sceneMouseEvent = createSceneMouseEvent(
@@ -1007,7 +1022,7 @@ export function useSceneMouseEventListener(
       const clickTimer = clickTimers[ev.button];
       if (ev.type === "mousemove") {
         if (clickTimer) {
-          if (viewPos.substract(clickTimer.startPos).norm() < 5) {
+          if (viewPos.subtract(clickTimer.startPos).norm() < 5) {
             clickTimer.lastPos = viewPos;
             return;
           }
@@ -1018,7 +1033,7 @@ export function useSceneMouseEventListener(
 
           // Compute mouse movement from ignored event during timer
           const delta = clickTimer.lastPos
-            .substract(clickTimer.startPos)
+            .subtract(clickTimer.startPos)
             .divide(zoomTransform.scale);
           sceneMouseEvent.movement = sceneMouseEvent.movement.add(delta);
           sceneMouseEvent.cursor = sceneMouseEvent.cursor.add(delta);
@@ -1041,7 +1056,7 @@ export function useSceneMouseEventListener(
 
               // Compute mouse movement from ignored event during timer
               const delta = c.lastPos
-                .substract(c.startPos)
+                .subtract(c.startPos)
                 .divide(zoomTransform.scale);
               sceneMouseEvent.movement = delta;
               sceneMouseEvent.cursor = sceneMouseEvent.cursor.add(delta);
@@ -1081,6 +1096,7 @@ export function useSceneMouseEventListener(
       node.removeEventListener("mouseleave", mouseEL);
     };
   }, [zoomTransform, zoomTransform.areaState.node]);
+
 
   return cursorPos;
 }

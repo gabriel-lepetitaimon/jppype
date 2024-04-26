@@ -51,6 +51,11 @@ export abstract class JBaseWidget extends DOMWidgetView {
   render() {
     this.el.classList.add("jbasewidget");
     this.el.classList.add("jbasewidget-" + this.constructor.name);
+    this.el.addEventListener("keydown", (e) => {
+      if (JBaseCommand.processKeydown(e)) {
+        e.preventDefault();
+      }
+    });
     this.renderJWidget(this.el);
   }
 
@@ -111,14 +116,19 @@ export class JBaseCommand {
     this.opt = { ...defaultOptionJBaseCommand, ...opt };
   }
 
-  protected execute(): void {
+  protected execute(): boolean {
+    let executed = false;
     for (let widgetClass in _registeredJBaseWidgets) {
       if (this.concernedWidgetClass.includes(widgetClass)) {
         for (let w of _registeredJBaseWidgets[widgetClass]) {
-          if (this.opt.isGlobal || w.active) this.opt.execute(w.widget);
+          if (this.opt.isGlobal || w.active) {
+            this.opt.execute(w.widget);
+            executed = true;
+          } 
         }
       }
     }
+    return executed;
   }
 
   protected static registeredCommand: JBaseCommand[] = [];
@@ -148,6 +158,15 @@ export class JBaseCommand {
       }
       palette.addItem({ command: command.commandId, category: "JPPype" });
     });
+  }
+
+  public static processKeydown(event: KeyboardEvent): boolean {
+    const command = JBaseCommand.registeredCommand.filter((command) => command.opt.shortcut.includes(event.key));
+    for (let c of command) {
+      if (c.execute())
+        return true;
+    }
+    return false;
   }
 }
 

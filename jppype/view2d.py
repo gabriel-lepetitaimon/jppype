@@ -22,6 +22,10 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
     )
     _layers_options = traitlets.Dict(key_trait=traitlets.Unicode(), value_trait=traitlets.Unicode()).tag(sync=True)
     _domain = traitlets.Tuple(trait=(int, int, int, int)).tag(sync=True)
+    _area_selected = traitlets.Union(
+        (traitlets.Tuple(trait=(int, int, int, int)),), allow_none=True, default_value=None
+    ).tag(sync=True)
+    _hide_foreground = traitlets.Bool(False).tag(sync=True)
     _transform = traitlets.Tuple((0, 0, 1e-8), trait=(float, float, float)).tag(sync=True)
     _target_transform = traitlets.Tuple((0, 0, 1e-8), trait=(float, float, float)).tag(sync=True)
     linkedTransformGroup = traitlets.Unicode(None, allow_none=True).tag(sync=True)
@@ -29,6 +33,9 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
     _model_name = traitlets.Unicode("JView2DModel").tag(sync=True)
     _view_name = traitlets.Unicode("JView2D").tag(sync=True)
     _loading = traitlets.Bool(False).tag(sync=True)
+
+    _left_ruler = traitlets.Bool(True).tag(sync=True)
+    _top_ruler = traitlets.Bool(True).tag(sync=True)
 
     def __init__(self, layers: Iterator[Layer] | Layer = ()):
         super(View2D, self).__init__()
@@ -141,9 +148,9 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         return self._transform
 
 
-def imshow(image, vmax: ValueBound = 'auto', vmin: ValueBound = 'auto'):
+def imshow(image, vmax: ValueBound = "auto", vmin: ValueBound = "auto", name: str | None = "background"):
     viewer = View2D()
-    viewer.add_image(image, vmax=vmax, vmin=vmin)
+    viewer.add_image(image, vmax=vmax, vmin=vmin, name=name)
     return viewer
 
 

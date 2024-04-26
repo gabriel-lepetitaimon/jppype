@@ -31,9 +31,11 @@ import View2DRender from "../react-components/View2DRender";
 import { Observable } from "rxjs";
 import { create } from "zustand";
 import { subscribeWithSelector } from "zustand/middleware";
-import "../../css/ImageViewerWidger.css";
+import "../../css/View2D.css";
 import { useTheme } from "../utils/mui";
 import { instantiatedStore, synchronizableStates } from "../utils/zustand-utils";
+import RectSelectionOverlay from "../react-components/RectSelectionOverlay";
+import CursorOverlay from "../react-components/CursorOverlay";
 
 interface View2DProps {
   model: JView2DModel;
@@ -42,6 +44,7 @@ interface View2DProps {
 
 interface WidgetState {
   transform: Transform;
+  cursorPos: Point | null;
 }
 
 const useImageViewerStore = instantiatedStore(() =>
@@ -53,6 +56,7 @@ const useImageViewerStore = instantiatedStore(() =>
           coord: "relative",
           zoom: 0,
         } as Transform,
+        cursorPos: null as Point | null,
       }))
     )
   )
@@ -63,6 +67,10 @@ function View2D(props: View2DProps) {
   const ref = useRef<HTMLDivElement | null>(null);
   // const [layers] = JView2DModel.use('_layers_data');
   const [_] = JView2DModel.use("_loading");
+  const [areaSelected] = JView2DModel.use("_area_selected");
+  const [hideForeground] = JView2DModel.use("_hide_foreground");
+  const [showLeftRuler] = JView2DModel.use("_left_ruler");
+  const [showTopRuler] = JView2DModel.use("_top_ruler");
 
   const model = props.model;
   const viewerStore = useImageViewerStore(model.instanceID);
@@ -103,7 +111,18 @@ function View2D(props: View2DProps) {
   }, []);
 
   const zoomTransform = useZoomTransform(ref, sceneRect, 50, domain, syncTransform);
-  const cursorPos = useSceneMouseEventListener(zoomTransform, props.events);
+
+  const syncCursorPos: [Observable<Point | null>, (p: Point | null) => void] = useMemo(() => {
+    const observable = new Observable<Point | null>((subcriber) => {
+      viewerStore.subscribe(
+        (s: WidgetState) => s.cursorPos,
+        (p: Point | null) => subcriber.next(p)
+      );
+    });
+    const observer = (p: Point | null) => viewerStore.setState({ cursorPos: p });
+    return [observable, observer];
+  }, []);
+  const cursorPos = useSceneMouseEventListener(zoomTransform, props.events, true, syncCursorPos);
 
   useModelEvent("change:_target_transform", (model) => {
     zoomTransform.dispatch({
@@ -142,47 +161,65 @@ function View2D(props: View2DProps) {
 
   const widgetStyle: CSSProperties = {
     display: "grid",
-    gridTemplateColumns: `${rulerProps.thickness}px auto`,
-    gridTemplateRows: `${rulerProps.thickness}px auto`,
+    gridTemplateColumns: showLeftRuler ? `${rulerProps.thickness}px auto` : "auto",
+    gridTemplateRows: showTopRuler ? `${rulerProps.thickness}px auto` : "auto",
   };
 
-  const cx = zoomTransform.center.x - zoomTransform.sceneRect.left + zoomTransform.sceneDomain.left;
-  const cy = zoomTransform.center.y - zoomTransform.sceneRect.top + zoomTransform.sceneDomain.top;
+  const t = zoomTransform;
+
+  const sceneSize = t.sceneRect.size.multiply(zoomTransform.scale);
+
+  const center = zoomTransform.areaState.viewSize.half().subtract(
+      (t.center.subtract(t.sceneRect.topLeft).add(t.sceneDomain.topLeft))
+      .multiply(t.scale)
+    );
+
+  // const cx = (zoomTransform.center.x - zoomTransform.sceneRect.left + zoomTransform.sceneDomain.left) * zoomTransform.scale;
+  // const cy = h/2 - (zoomTransform.center.y - zoomTransform.sceneRect.top + zoomTransform.sceneDomain.top) * zoomTransform.scale;
 
   const sceneTransform: CSSProperties = {
-    width: `${zoomTransform.sceneRect.width * zoomTransform.scale}px`,
-    height: `${zoomTransform.sceneRect.height * zoomTransform.scale}px`,
+    width: `${sceneSize.x}px`,
+    height: `${sceneSize.y}px`,
     position: "absolute",
-    left: `calc(50% ${cx < 0 ? "+" : "-"} ${Math.abs(cx) * zoomTransform.scale}px)`,
-    top: `calc(50% ${cy < 0 ? "+" : "-"} ${Math.abs(cy) * zoomTransform.scale}px)`,
+    left: `${center.x}px`,
+    top: `${center.y}px`,
   };
 
-  // --- RENDER ---
+  const topRuler = showTopRuler 
+    ? (<RulerAxis
+      orientation={"horizontal"}
+      center={zoomTransform.center.x}
+      cursorPos={cursorPos?.x}
+      onPanCenter={panHorizontally}
+      onSetCenter={setCenterHorizontally}
+      axisInterval={{ start: zoomTransform.sceneDomain.left, end: zoomTransform.sceneDomain.right }}
+      style={{ gridRow: 1, gridColumn: showLeftRuler ? 2 : 1 }}
+      {...rulerProps}
+    />)
+    : null;
+
+  const leftRuler = showLeftRuler
+    ? (<RulerAxis
+      orientation={"vertical"}
+      center={zoomTransform.center.y}
+      cursorPos={cursorPos?.y}
+      onPanCenter={panVertically}
+      onSetCenter={setCenterVertically}
+      axisInterval={{ start: zoomTransform.sceneDomain.top, end: zoomTransform.sceneDomain.bottom }}
+      style={{ gridRow: showTopRuler ? 2 : 1, gridColumn: 1 }}
+      {...rulerProps}
+    />)
+    : null;
+
+  // --- RENDER --- 
   return (
     <div className="ImageViewerWidget" style={widgetStyle}>
-      <RulerAxis
-        orientation={"horizontal"}
-        center={zoomTransform.center.x}
-        cursorPos={cursorPos?.x}
-        onPanCenter={panHorizontally}
-        onSetCenter={setCenterHorizontally}
-        axisInterval={{ start: zoomTransform.sceneDomain.left, end: zoomTransform.sceneDomain.right }}
-        style={{ gridRow: 1, gridColumn: 2 }}
-        {...rulerProps}
-      />
-      <RulerAxis
-        orientation={"vertical"}
-        center={zoomTransform.center.y}
-        cursorPos={cursorPos?.y}
-        onPanCenter={panVertically}
-        onSetCenter={setCenterVertically}
-        axisInterval={{ start: zoomTransform.sceneDomain.top, end: zoomTransform.sceneDomain.bottom }}
-        style={{ gridRow: 2, gridColumn: 1 }}
-        {...rulerProps}
-      />
+      
+      {topRuler}
+      {leftRuler}
 
-      <div ref={ref} style={{ gridRow: 2, gridColumn: 2, cursor: "crosshair" }}>
-        <div className={"ImageViewport"}>
+      <div ref={ref} style={{ gridRow: showTopRuler ? 2 : 1, gridColumn: showLeftRuler ? 2 : 1, cursor: "crosshair" }}>
+        <div className={"ImageViewport" + (hideForeground ? ' hideForegroundLayers' : '')}>
           <div style={sceneTransform}>
             <View2DRender
               layers={layers_data}
@@ -190,7 +227,15 @@ function View2D(props: View2DProps) {
               sceneDomain={sceneRect}
               scale={zoomTransform.scale}
             />
+            <RectSelectionOverlay
+              sceneDomain={sceneRect}
+              selection={areaSelected}
+              shadowOpacity={0.5}
+            />
           </div>
+        </div>
+        <div className={"ImageViewportOverlays"}>  
+          <CursorOverlay sceneDomain={sceneRect} cursorPos={cursorPos} transform={zoomTransform}/>
         </div>
       </div>
     </div>

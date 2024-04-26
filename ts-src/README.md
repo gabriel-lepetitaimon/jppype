@@ -14,3 +14,11 @@ Package Install
 ```bash
 npm install --save jppype
 ```
+
+
+Build
+-----
+
+```bash
+jlpm build
+```

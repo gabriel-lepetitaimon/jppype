@@ -148,6 +148,7 @@ class Layer(abc.ABC):
             "visible": True,
             "opacity": 1.0,
             "z_index": -1,
+            "foreground": False,
             "label": "",
             "auto_scale_domain": True,
             "domain": Rect.empty(),
@@ -252,6 +253,13 @@ class Layer(abc.ABC):
                         else:
                             continue
                     self._options["domain"] = tuple(v)
+                case "foreground":
+                    if not isinstance(v, bool):
+                        if raise_on_error:
+                            raise ValueError(f"foreground must be a bool, got {v}")
+                        else:
+                            continue
+                    self._options["foreground"] = v
         self._notify_options_change({k: self._options[k] for k in options.keys() if k in self._options})
 
     @property
@@ -293,6 +301,14 @@ class Layer(abc.ABC):
     @z_index.setter
     def z_index(self, value: float):
         self.set_options({"z_index": value})
+
+    @property
+    def foreground(self) -> bool:
+        return self._options["foreground"]
+
+    @foreground.setter
+    def foreground(self, value: bool):
+        self.set_options({"foreground": value})
 
     @property
     def domain(self) -> Rect:

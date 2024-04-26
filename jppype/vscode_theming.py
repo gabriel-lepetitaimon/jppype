@@ -46,7 +46,7 @@ def vscode_theme(ipywidget=True):
     else:
         background_css = """
         .jbasewidget {
-                background: var(--vscode-editor-background, transparent) !important;
+            background: var(--vscode-editor-background, transparent) !important;
         }"""
 
     theme = (

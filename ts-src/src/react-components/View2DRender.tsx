@@ -66,6 +66,17 @@ export default function View2DRender(props: View2DRenderProps) {
           />
         );
         break;
+      case "quiver":
+        layers.push(
+          <QuiverLayer
+            data={data}
+            options={opt}
+            sceneDomain={props.sceneDomain}
+            pixelSize={pixelSize}
+            key={name}
+          />
+        );
+        break;
     }
   }
 
@@ -86,6 +97,7 @@ export function ImageLayer(props: {
     <img
       src={data.data}
       alt={options.label}
+      className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
       style={{
         imageRendering: pixelSize < 7 ? "auto" : "pixelated",
         ...getLayerStyle(options, sceneDomain),
@@ -126,6 +138,7 @@ export function LabelLayer(props: {
   return (
     <canvas
       ref={canvasRef}
+      className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
       style={{
         imageRendering: pixelSize < 7 ? "auto" : "pixelated",
         ...getLayerStyle(options, sceneDomain),
@@ -276,6 +289,7 @@ export function GraphLayer(props: {
   return (
     <>
       <canvas
+        className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
         ref={edgeCanvasRef}
         style={{
           ...layerStyle,
@@ -284,6 +298,7 @@ export function GraphLayer(props: {
         }}
       />
       <svg
+        className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
         xmlns={"http://www.w3.org/2000/svg"}
         viewBox={`${nodesDomain.left} ${nodesDomain.top} ${nodesDomain.width} ${nodesDomain.height}`}
         preserveAspectRatio={"none"}
@@ -291,6 +306,93 @@ export function GraphLayer(props: {
       >
         {edges}
         {nodes}
+      </svg>
+    </>
+  );
+}
+
+export function QuiverLayer(props: {
+  data: LayerData;
+  options: LayerOptions;
+  sceneDomain: Rect;
+  pixelSize: number;
+}) {
+  const { data, options, sceneDomain } = props;
+
+  const arrows = useMemo(
+    () =>
+      data.data.arrows.map((yxvu: [number, number, number, number], i: number) => {
+        const [y, x, v, u] = yxvu;
+
+        const angle = Math.atan2(v, u);
+        let zoom_scaling = (x: number) => x;
+        switch (options.zoom_scaling) {
+          case "view_sqrt":
+            zoom_scaling = (x: number) => Math.pow(props.pixelSize, -0.5) * x ;
+            break;
+          case "view_log":
+            zoom_scaling = (x: number) => Math.log(1/props.pixelSize) * x;
+            break;
+          case "view":
+            zoom_scaling = (x: number) => x / props.pixelSize;
+            break;
+        }
+        let length = Math.sqrt(u * u + v * v);
+        let arrowLength = zoom_scaling(Math.sqrt(length));
+        length = zoom_scaling(length);
+        
+        const color = options.color;
+        const width = options.width;
+
+        const transform = `translate(${x+0.5}, ${y+0.5}) rotate(${angle * 180 / Math.PI})`;
+
+        return (
+          <g key={i} transform={transform}>
+            <line
+              x1={0}
+              y1={0}
+              x2={length}
+              y2={0}
+              stroke={color}
+              strokeWidth={width / props.pixelSize}
+            />
+            <line
+              x1={length}
+              y1={0}
+              x2={length - arrowLength}
+              y2={-arrowLength}
+              stroke={color}
+              strokeWidth={width / props.pixelSize}
+            />
+            <line
+              x1={length}
+              y1={0}
+              x2={length - arrowLength}
+              y2={arrowLength}
+              stroke={color}
+              strokeWidth={width / props.pixelSize}
+            />
+          </g>
+        );
+      }),
+    [
+      data.data.arrows,
+      props.pixelSize,
+    ]
+  );
+  const quiverDomain = Rect.fromTuple(data.infos.quiverDomain);
+  const layerStyle = getLayerStyle(options, sceneDomain);
+
+  return (
+    <>
+      <svg
+        className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
+        xmlns={"http://www.w3.org/2000/svg"}
+        viewBox={`${quiverDomain.left} ${quiverDomain.top} ${quiverDomain.width} ${quiverDomain.height}`}
+        preserveAspectRatio={"none"}
+        style={layerStyle}
+      >
+        {arrows}
       </svg>
     </>
   );
@@ -327,11 +429,14 @@ function colorizeLabelInplace(imageData: ImageData, cmapLookup: CMapRGBA) {
     }
 
     const color = cmapLookup[v];
-
-    imageData.data[i] = color[0];
-    imageData.data[i + 1] = color[1];
-    imageData.data[i + 2] = color[2];
-    imageData.data[i + 3] = color[3];
+    if (color === undefined) {
+      imageData.data[i + 3] = 0;
+    } else {
+      imageData.data[i] = color[0];
+      imageData.data[i + 1] = color[1];
+      imageData.data[i + 2] = color[2];
+      imageData.data[i + 3] = color[3];
+    }
   }
 }
 
@@ -349,7 +454,7 @@ function drawLabels(
     canvas.height = img.height;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(img, 0, 0);
-    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height, );
     colorizeLabelInplace(imageData, cmapLookup);
     ctx.putImageData(imageData, 0, 0);
   };
