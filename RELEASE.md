@@ -32,8 +32,8 @@ To release a new version of jppype on PyPI, first make sure that the `build` pac
 3. Generate Python packages and upload to PyPI:
    ```bash
    python -m build
-   twine check dist/*
-   twine upload dist/*
+   twine check dist/jppype-*
+   twine upload dist/jppype-*
    ```
 4. Update version to dev again:
    ```bash
