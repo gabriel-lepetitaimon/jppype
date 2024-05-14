@@ -10,7 +10,12 @@ The widgets work both with Jupyter Notebook and Jupyter Lab.
 To install use pip:
 
 ```bash
-pip install jppype
+pip install jppype==0.2.0a3
+```
+
+Cv2 is required by jppype but is not listed in the package dependencies (to prevent version conflicts). You can install it with:
+```bash
+pip install opencv-python-headless
 ```
 
 ## Usage
@@ -55,7 +60,7 @@ cd jppype
 
 For a development installation (requires [Node.js](https://nodejs.org) and [Yarn version 1](https://classic.yarnpkg.com/)):
 ```bash
-conda create -n jppype python=3.10
+conda create -n jppype python
 conda install -c conda-forge yarn nodejs
 ```
 
