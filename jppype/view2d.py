@@ -102,9 +102,9 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         return layer
 
     def add_label(
-        self, label, name: str | None = None, colormap: str | None = None, options=None, **opts
+        self, label, name: str | None = None, colormap: str | None = None, options=None, as_polygon=False, **opts
     ) -> LayerLabel:
-        layer = LayerLabel(label, colormap=colormap)
+        layer = LayerLabel(label, colormap=colormap, as_polygon=as_polygon)
         self.add_layer(layer, alias=name)
         opts.update(options or {})
         if opts:

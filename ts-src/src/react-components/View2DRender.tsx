@@ -66,6 +66,17 @@ export default function View2DRender(props: View2DRenderProps) {
           />
         );
         break;
+      case "polygons":
+        layers.push(
+          <SvgPolygonsLayer
+            data={data}
+            options={opt}
+            sceneDomain={props.sceneDomain}
+            pixelSize={pixelSize}
+            key={name}
+          />
+        );
+        break;
       case "quiver":
         layers.push(
           <QuiverLayer
@@ -309,6 +320,56 @@ export function GraphLayer(props: {
       </svg>
     </>
   );
+}
+
+export function SvgPolygonsLayer(props: {
+  data: LayerData;
+  options: LayerOptions;
+  sceneDomain: Rect;
+  pixelSize: number;
+}) {
+  const { data, options, sceneDomain } = props;
+
+  const cMap = useMemo(
+    () => cmap2Hexlookup(data.infos.labels, options.cmap),
+    [data.infos.label, options.cmap]
+  );
+  
+  const polygons = useMemo(
+    () => data.data.polygons.map((polygon: [number, number][], i: number) => {
+        const points = polygon
+          .map(([y, x]) => (isNaN(y) || isNaN(x)) ? "" : `${x + 0.5},${y + 0.5}`)
+          .join(" ");
+        
+        const color = cMap[data.data.labels[i]];
+        return (
+          <polygon
+            key={i}
+            points={points}
+            fill={color}
+            stroke={color}
+            strokeWidth={options.strokeWidth}
+            fillOpacity={options.opacity}
+          />
+        );
+      }),
+    [data.data.polygons, options.cmap, options.strokeWidth, options.opacity]
+  );
+
+  const layerStyle = getLayerStyle(options, sceneDomain);
+
+  return (
+    <svg
+      className={options.foreground ? "foregroundLayer" : "backgroundLayer"}
+      xmlns={"http://www.w3.org/2000/svg"}
+      viewBox={`${sceneDomain.left} ${sceneDomain.top} ${sceneDomain.width} ${sceneDomain.height}`}
+      preserveAspectRatio={"none"}
+      style={layerStyle}
+    >
+      {polygons}
+    </svg>
+  );
+  
 }
 
 export function QuiverLayer(props: {

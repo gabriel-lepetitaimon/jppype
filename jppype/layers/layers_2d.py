@@ -187,11 +187,16 @@ class LayerImage(Layer):
 
 
 class LayerLabel(Layer):
-    def __init__(self, label_map, colormap: Dict[int, str] | List[str] | str | None = None):
-        super().__init__("label")
+    def __init__(self, label_map, colormap: Dict[int, str] | List[str] | str | None = None, as_polygon=False):
+        super().__init__("label" if not as_polygon else "polygons")
         self.label_map = label_map
         self.colormap = colormap
+        self.stroke_width = 1
         self.foreground = True
+
+    @property
+    def is_polygon(self):
+        return self._layer_type == "polygons"
 
     @property
     def label_map(self):
@@ -214,6 +219,15 @@ class LayerLabel(Layer):
         self._options["cmap"] = cmap
         self._notify_options_change({"cmap": cmap})
 
+    @property
+    def stroke_width(self):
+        return self._options.get("strokeWidth", 1)
+
+    @stroke_width.setter
+    def stroke_width(self, width):
+        self._options["strokeWidth"] = max(float(width), 0)
+        self._notify_options_change({"strokeWidth": width})
+
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
         label = self._label_map
 
@@ -222,8 +236,18 @@ class LayerLabel(Layer):
             label = fit_resize(label, resize, interpolation=cv2.INTER_NEAREST)
         labels = np.unique(label).tolist()
 
+        if self.is_polygon:
+            contours, hierarchy = cv2.findContours(
+                (label > 0).astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
+            polygons = [c[..., 0, ::-1].tolist() for c in contours]
+            label_mapping = [int(label[p[0][0], p[0][1]]) - 1 for p in polygons]
+            layer_data = {"polygons": [c[..., 0, ::-1].tolist() for c in contours], "labels": label_mapping}
+        else:
+            layer_data = (LayerLabel.encode_url(label),)
+
         return LayerData(
-            LayerLabel.encode_url(label),
+            layer_data,
             infos={"width": w, "height": h, "labels": labels},
         )
 
