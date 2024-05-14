@@ -14,7 +14,6 @@ ts-src/lib/
 ts-src/dist/
 
 # lock & npm package dependency
-ts-src/package-lock.json
 ts-src/.yarn/
 ts-src/node_modules/
 ts-src/.pnp.*
