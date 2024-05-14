@@ -19,3 +19,5 @@ global-exclude *.pyo
 global-exclude .git
 global-exclude .ipynb_checkpoints
 global-exclude *.map
+
+prune example
