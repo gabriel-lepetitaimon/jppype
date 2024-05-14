@@ -956,7 +956,7 @@ export function useSceneMouseEventListener(
           };
         }
 
-        if (Math.abs(ev.deltaY) > 1) {
+        if (Math.abs(ev.deltaY) >= 1) {
           zoomTransform.dispatch({
             ...zoomAction,
             animation: { duration: 200, cancelable: false },
