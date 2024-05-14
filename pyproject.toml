@@ -42,16 +42,17 @@ dependencies = [
     "ipywidgets~=8.0.5,<9",
     "numpy",
     "StrEnum",
-    "webcolors"
+    "webcolors",
 ]
 
 [project.optional-dependencies]
 examples = []
 build = [
+    "jupyterlab~=4.2",
     "build",
     "tbump"
 ]
-dev = ["jupyterlab~=4.0.0", "black", "ruff"]
+dev = ["black", "ruff"]
 
 [project.urls]
 Homepage = " https://github.com/gabriel-lepetitaimon/jppype"
@@ -62,8 +63,7 @@ allow-direct-references = true
 
 [tool.hatch.build]
 artifacts = [
-    "jppype/nbextension/static/index.*",
-    "jppype/labextension/*.tgz",
+    "jppype/nbextension/static",
     "jppype/labextension",
 ]
 
@@ -85,7 +85,7 @@ ensured-targets = [
     "jppype/labextension/package.json",
 ]
 skip-if-exists = [
-    "jppype/nbextension/index.js",
+    "jppype/nbextension/static/index.js",
     "jppype/labextension/package.json",
 ]
 dependencies = [
@@ -114,7 +114,7 @@ file = [
 ]
 
 [tool.tbump.version]
-current = "0.2.0.alpha1"
+current = "0.2.0alpha2"
 version_template = "{major}.{minor}.{patch}"
 
 [tool.tbump.git]

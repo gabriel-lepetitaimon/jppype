@@ -49,11 +49,12 @@ module.exports = (env, argv) => {
       // This bundle contains the implementation for the custom widget views and
       // custom widget.
       // It must be an amd module
-      entry: ["./amd-public-path.js", "./src/index.ts"],
+      entry: "./src/index.ts",
       output: {
         filename: "index.js",
-        path: path.resolve(__dirname, "..", "jppype", "nbextension"),
+        path: path.resolve(__dirname, "..", "dist", "unpkg"),
         libraryTarget: "amd",
+        library: "jppype",
         publicPath: "", // Set in amd-public-path.js
       },
       devtool,

@@ -1,4 +1,4 @@
-graft jppype/nbextension
+graft jppype/nbextension/static
 graft jppype/labextension
 
 graft ts-src
