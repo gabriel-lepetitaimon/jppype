@@ -68,7 +68,7 @@ artifacts = [
 ]
 
 [tool.hatch.build.targets.wheel.shared-data]
-"jppype/nbextension/static" = "share/jupyter/nbextensions/jppype"
+"jppype/nbextension" = "share/jupyter/nbextensions/jppype"
 "jppype/labextension" = "share/jupyter/labextensions/jppype"
 "./install.json" = "share/jupyter/labextensions/jppype/install.json"
 "./jppype.json" = "etc/jupyter/nbconfig/notebook.d/jppype.json"
@@ -81,11 +81,11 @@ exclude = [
 [tool.hatch.build.hooks.jupyter-builder]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
-    "jppype/nbextension/static/index.js",
+    "jppype/nbextension/index.js",
     "jppype/labextension/package.json",
 ]
 skip-if-exists = [
-    "jppype/nbextension/static/index.js",
+    "jppype/nbextension/index.js",
     "jppype/labextension/package.json",
 ]
 dependencies = [

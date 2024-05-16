@@ -32,7 +32,7 @@ module.exports = (env, argv) => {
       entry: "./src/extension.ts",
       output: {
         filename: "index.js",
-        path: path.resolve(__dirname, "..", "jppype", "nbextension", "static"),
+        path: path.resolve(__dirname, "..", "jppype", "nbextension"),
         libraryTarget: "amd",
         publicPath: "",
       },
@@ -40,27 +40,6 @@ module.exports = (env, argv) => {
         rules: rules,
       },
       devtool: "source-map",
-      externals,
-      resolve,
-    },
-    {
-      // Bundle for the notebook containing the custom widget views and models
-      //
-      // This bundle contains the implementation for the custom widget views and
-      // custom widget.
-      // It must be an amd module
-      entry: "./src/index.ts",
-      output: {
-        filename: "index.js",
-        path: path.resolve(__dirname, "..", "dist", "unpkg"),
-        libraryTarget: "amd",
-        library: "jppype",
-        publicPath: "", // Set in amd-public-path.js
-      },
-      devtool,
-      module: {
-        rules: rules,
-      },
       externals,
       resolve,
     },
@@ -77,13 +56,13 @@ module.exports = (env, argv) => {
     {
       entry: ["./amd-public-path.js", "./src/index.ts"],
       output: {
-        filename: "index.ts",
-        path: path.resolve(__dirname, "dist"),
+        filename: "index.js",
+        path: path.resolve(__dirname, "..", "dist", "unpkg"),
         libraryTarget: "amd",
         library: "jppype",
         publicPath: "", // Set in amd-public-path.js
       },
-      devtool: "source-map",
+      devtool,
       module: {
         rules: rules,
       },
