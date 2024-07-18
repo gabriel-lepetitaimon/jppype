@@ -1,7 +1,7 @@
 import { DOMWidgetModel, ISerializers } from "@jupyter-widgets/base";
 import { createElement } from "react";
 import { render } from "react-dom";
-import ImageViewerWidget from "../react-widgets/View2D";
+import View2D from "../react-components/View2D";
 import { Point, Rect } from "../utils/point";
 import { SceneMouseEvent, Transform } from "../utils/zoom-pan-handler";
 import { JBaseWidget, JModel, createUseModelState } from "./jbasewidget";
@@ -34,7 +34,7 @@ export class JView2D extends JBaseWidget {
       };
     };
 
-    const component = createElement(ImageViewerWidget, {
+    const component = createElement(View2D, {
       model: this.model as JView2DModel,
       events: {
         onClick: (ev) => {

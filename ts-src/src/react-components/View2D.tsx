@@ -25,8 +25,8 @@ import SettingsIcon from '@mui/icons-material/Settings';
 import VerticalSplitIcon from '@mui/icons-material/VerticalSplit'; */
 import { ThemeProvider } from "@mui/material/styles";
 
-import RulerAxis from "../react-components/RulerAxis";
-import View2DRender from "../react-components/View2DRender";
+import RulerAxis from "./RulerAxis";
+import View2DRender from "./View2DRender/View2DRender";
 
 import { Observable } from "rxjs";
 import { create } from "zustand";
@@ -34,8 +34,8 @@ import { subscribeWithSelector } from "zustand/middleware";
 import "../../css/View2D.css";
 import { useTheme } from "../utils/mui";
 import { instantiatedStore, synchronizableStates } from "../utils/zustand-utils";
-import RectSelectionOverlay from "../react-components/RectSelectionOverlay";
-import CursorOverlay from "../react-components/CursorOverlay";
+import RectSelectionOverlay from "./RectSelectionOverlay";
+import CursorOverlay from "./CursorOverlay";
 
 interface View2DProps {
   model: JView2DModel;
@@ -170,9 +170,9 @@ function View2D(props: View2DProps) {
   const sceneSize = t.sceneRect.size.multiply(zoomTransform.scale);
 
   const center = zoomTransform.areaState.viewSize.half().subtract(
-      (t.center.subtract(t.sceneRect.topLeft).add(t.sceneDomain.topLeft))
+    (t.center.subtract(t.sceneRect.topLeft).add(t.sceneDomain.topLeft))
       .multiply(t.scale)
-    );
+  );
 
   // const cx = (zoomTransform.center.x - zoomTransform.sceneRect.left + zoomTransform.sceneDomain.left) * zoomTransform.scale;
   // const cy = h/2 - (zoomTransform.center.y - zoomTransform.sceneRect.top + zoomTransform.sceneDomain.top) * zoomTransform.scale;
@@ -185,7 +185,7 @@ function View2D(props: View2DProps) {
     top: `${center.y}px`,
   };
 
-  const topRuler = showTopRuler 
+  const topRuler = showTopRuler
     ? (<RulerAxis
       orientation={"horizontal"}
       center={zoomTransform.center.x}
@@ -214,7 +214,7 @@ function View2D(props: View2DProps) {
   // --- RENDER --- 
   return (
     <div className="ImageViewerWidget" style={widgetStyle}>
-      
+
       {topRuler}
       {leftRuler}
 
@@ -234,8 +234,8 @@ function View2D(props: View2DProps) {
             />
           </div>
         </div>
-        <div className={"ImageViewportOverlays"}>  
-          <CursorOverlay sceneDomain={sceneRect} cursorPos={cursorPos} transform={zoomTransform}/>
+        <div className={"ImageViewportOverlays"}>
+          <CursorOverlay sceneDomain={sceneRect} cursorPos={cursorPos} transform={zoomTransform} />
         </div>
       </div>
     </div>

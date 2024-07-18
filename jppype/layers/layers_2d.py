@@ -419,10 +419,17 @@ class LayerIntensityMap(Layer):
 
 class LayerGraph(Layer):
     def __init__(
-        self, adjacency_list, nodes_coordinates, edge_map=None, nodes_domain=None, nodes_cmap=None, edges_cmap=None
+        self,
+        adjacency_list,
+        nodes_coordinates,
+        edge_map=None,
+        edge_path=None,
+        nodes_domain=None,
+        nodes_cmap=None,
+        edges_cmap=None,
     ):
         super().__init__("graph")
-        self.set_graph(adjacency_list, nodes_coordinates, edge_map, nodes_domain)
+        self.set_graph(adjacency_list, nodes_coordinates, edge_map, edge_path, nodes_domain)
         self.nodes_cmap = nodes_cmap
         self.edges_cmap = edges_cmap
         self.edges_opacity = 0.7
@@ -431,12 +438,15 @@ class LayerGraph(Layer):
         self.edge_map_visible = edge_map is None
         self.foreground = True
 
-    def set_graph(self, adjacency_list, nodes_coordinates, edge_map=None, nodes_domains: Rect | None = None):
+    def set_graph(
+        self, adjacency_list, nodes_coordinates, edge_map=None, edges_path=None, nodes_domains: Rect | None = None
+    ):
         if nodes_domains is None and edge_map is not None:
             nodes_domains = Rect.from_size(edge_map.shape)
         self._set_adjacency_list(adjacency_list, check_dim=False)
         self._set_nodes_coordinates(nodes_coordinates, nodes_domains)
         self._set_edge_map(edge_map)
+        self._set_edges_path(edges_path)
         self._notify_data_change()
 
     def set_options(self, options: Dict[str, any], raise_on_error: bool = True):
@@ -498,7 +508,7 @@ class LayerGraph(Layer):
             if self.adjacency_list is not None:
                 assert node_yx.shape[0] > self.adjacency_list.max(), (
                     f"Invalid nodes coordinates shape {node_yx.shape}. "
-                    f"Expected at least {self.adjacency_list.max()+1} nodes but got {node_yx.shape[0]}."
+                    f"Expected at least {int(self.adjacency_list.max())+1} nodes but got {node_yx.shape[0]}."
                 )
         if nodes_domain is None:
             if self.edge_map is not None:
@@ -532,9 +542,9 @@ class LayerGraph(Layer):
                 raise error
             if check_dim:
                 if self.adjacency_list is not None:
-                    assert edge_label.max() == self.adjacency_list.shape[0], (
+                    assert edge_label.max() <= self.adjacency_list.shape[0], (
                         f"Invalid edge label: maximum label is {edge_label.max()} "
-                        f"but adjacency list contains{self.adjacency_list.shape[0]} edges."
+                        f"but adjacency list contains {self.adjacency_list.shape[0]} edges."
                     )
             self._edge_map = edge_label.astype(np.uint32)
             if self._nodes_domain is None:
@@ -559,6 +569,24 @@ class LayerGraph(Layer):
     @edges_cmap.setter
     def edges_cmap(self, cmap):
         self.set_options({"edges_cmap": cmap})
+
+    @property
+    def edges_path(self):
+        return self._edges_path
+
+    @edges_path.setter
+    def edges_path(self, edge_path):
+        self._set_edges_path(edge_path)
+        self._notify_data_change()
+
+    def _set_edges_path(self, edge_path):
+        if edge_path is not None:
+            assert isinstance(edge_path, list) and all(
+                isinstance(e, str) for e in edge_path
+            ), f"Invalid edge path {edge_path}. Must be a list of str."
+            self._edges_path = edge_path
+        else:
+            self._edges_path = None
 
     @property
     def node_labels_visible(self):
@@ -603,6 +631,8 @@ class LayerGraph(Layer):
         )
         if self.edge_map is not None:
             data["edgeMap"] = LayerLabel.encode_url(self.edge_map)
+        if self.edges_path is not None:
+            data["edgePath"] = self.edges_path
         return LayerData(
             data=data,
             infos={
@@ -633,7 +663,7 @@ class LayerQuiver(Layer):
         xy,
         uv,
         domain: Rect,
-        zoom_scaling: bool = False,
+        zoom_scaling="view",
     ):
         super().__init__("quiver")
         self.set_data(xy, uv, domain)

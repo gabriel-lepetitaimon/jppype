@@ -19,16 +19,13 @@ class Transform:
         return f"Transform(translate={self._translate}, scale={self._scale}, origin={self._origin})"
 
     @overload
-    def __call__(self, p: tuple) -> tuple:
-        ...
+    def __call__(self, p: tuple) -> tuple: ...
 
     @overload
-    def __call__(self, p: Point) -> Point:
-        ...
+    def __call__(self, p: Point) -> Point: ...
 
     @overload
-    def __call__(self, p: Rect) -> Rect:
-        ...
+    def __call__(self, p: Rect) -> Rect: ...
 
     def __call__(self, p: tuple | Point | Rect) -> tuple | Point | Rect:
         if isinstance(p, tuple):
@@ -154,13 +151,11 @@ class Rect(NamedTuple):
 
     @overload
     @classmethod
-    def from_points(cls, bottom_right: Tuple[float | int, float | int]) -> Rect:
-        ...
+    def from_points(cls, bottom_right: Tuple[float | int, float | int]) -> Rect: ...
 
     @overload
     @classmethod
-    def from_points(cls, bottom: float | int, right: float | int) -> Rect:
-        ...
+    def from_points(cls, bottom: float | int, right: float | int) -> Rect: ...
 
     @overload
     @classmethod
@@ -170,22 +165,19 @@ class Rect(NamedTuple):
         bottom_right: Tuple[float | int, float | int],
         *,
         ensure_positive: bool,
-    ) -> Rect:
-        ...
+    ) -> Rect: ...
 
     @overload
     @classmethod
     def from_points(
         cls, top: float | int, left: float | int, bottom: float | int, right: float | int, *, ensure_positive: bool
-    ) -> Rect:
-        ...
+    ) -> Rect: ...
 
     @overload
     @classmethod
     def from_points(
         cls, top_left_bottom_right: Tuple[float | int, float | int, float | int, float | int], *, ensure_positive: bool
-    ) -> Rect:
-        ...
+    ) -> Rect: ...
 
     @classmethod
     def from_points(
@@ -339,16 +331,13 @@ class Rect(NamedTuple):
         )
 
     @overload
-    def pad(self, pad: float | Tuple[float, float]) -> Rect:
-        ...
+    def pad(self, pad: float | Tuple[float, float]) -> Rect: ...
 
     @overload
-    def pad(self, vertical: float, horizontal: float) -> Rect:
-        ...
+    def pad(self, vertical: float, horizontal: float) -> Rect: ...
 
     @overload
-    def pad(self, top: float, right: float, bottom: float, left: float) -> Rect:
-        ...
+    def pad(self, top: float, right: float, bottom: float, left: float) -> Rect: ...
 
     def pad(self, *pad: float | Tuple[float, float]) -> Rect:
         match pad:
@@ -453,16 +442,13 @@ class Point(NamedTuple):
                 raise TypeError("Point can only be created from a float or a tuple of 2 floats")
 
     @overload
-    def distance(self, other: Point) -> float:
-        ...
+    def distance(self, other: Point) -> float: ...
 
     @overload
-    def distance(self, other: List[Point]) -> List[float]:
-        ...
+    def distance(self, other: List[Point]) -> List[float]: ...
 
     @overload
-    def distance(self, other: npt.NDArray[np.float]) -> npt.NDArray[np.float]:
-        ...
+    def distance(self, other: npt.NDArray[np.float]) -> npt.NDArray[np.float]: ...
 
     def distance(self, other: Point | Iterable[Point]) -> float | Iterable[float]:
         import numpy as np

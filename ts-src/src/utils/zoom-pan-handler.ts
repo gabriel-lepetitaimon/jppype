@@ -859,18 +859,23 @@ export function useSceneMouseEventListener(
   const [cursorPos, setCursorPosState] = useState<Point | null>(null);
   const setCursorPos = syncCursorPos
                        ? (p: Point | null) => {
-                          syncCursorPos[1](p); 
+                          syncCursorPos[1](p===null ? null : zoomTransform.toRelativeCoord(p, "scene"));
                           setCursorPosState(p);
                         } 
                        : setCursorPosState;
+
   useLayoutEffect(() => {
     if (syncCursorPos) {
-      const sub = syncCursorPos[0].subscribe((p) => setCursorPosState(p));
+      const sub = syncCursorPos[0].subscribe((p) => {
+        const localPos = p===null ? null : zoomTransform.toSceneCoord(p, "relative").round();
+        setCursorPosState(localPos);
+      });
       return () => {
         sub.unsubscribe();
       };
     }
   }, [syncCursorPos]);
+  
 
   // --- Default Zoom events Handlers ---
   const events = useMemo(() => {

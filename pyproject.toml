@@ -96,9 +96,7 @@ dependencies = [
 build_cmd = "build:prod"
 path = "./ts-src/"
 source_dir = "./ts-src/"
-npm = [
-    "yarn",
-]
+
 
 
 [tool.tbump]

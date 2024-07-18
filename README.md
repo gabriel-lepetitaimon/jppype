@@ -78,7 +78,7 @@ pip install -U jupyterlab
 
 Install the python package and the extensions in development mode (this stage may take a while as it will build the jupyterlab extension):
 ```bash
-pip install -e .[dev]
+pip install -e .[dev,build]
 jupyter nbextension install --py --symlink --overwrite --sys-prefix jppype
 jupyter nbextension enable --py --sys-prefix jppype
 ```
