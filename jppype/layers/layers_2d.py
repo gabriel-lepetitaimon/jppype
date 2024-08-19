@@ -331,6 +331,9 @@ class LayerLabel(Layer):
         ):
             raise ValueError(f"Invalid colormap {cmap}. Must be dict[int, str].")
 
+        if isinstance(cmap.get(0, None), str):
+            cmap[0] = [cmap[0]]
+
         return {int(k): check_color(v) if k != 0 else [check_color(_) for _ in v] for k, v in cmap.items()}
 
 
@@ -397,8 +400,8 @@ class LayerIntensityMap(Layer):
         elif type(data).__qualname__ == "Tensor":
             data = data.detach().cpu().numpy()
 
-        assert isinstance(map, np.ndarray), f"Invalid map type {type(map)}. Must be numpy.ndarray."
-        assert map.ndim == 2, f"Invalid map shape {map.shape}. Must be (H, W)."
+        assert isinstance(data, np.ndarray), f"Invalid map type {type(data)}. Must be numpy.ndarray."
+        assert data.ndim == 2, f"Invalid map shape {data.shape}. Must be (H, W)."
 
         if resize is not None:
             data = fit_resize(data, resize)
@@ -663,7 +666,7 @@ class LayerQuiver(Layer):
         xy,
         uv,
         domain: Rect,
-        zoom_scaling="view",
+        zoom_scaling: Literal["scene", "view", "view_log", "view_sqrt"] = "view",
     ):
         super().__init__("quiver")
         self.set_data(xy, uv, domain)
