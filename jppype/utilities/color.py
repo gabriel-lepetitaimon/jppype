@@ -1,5 +1,7 @@
 from typing import Callable, List
 
+import numpy as np
+
 
 def colormap_by_name(name="catppuccin") -> List[str]:
     assert isinstance(name, str), f"Invalid colormap name {name}. Must be str."
@@ -38,6 +40,19 @@ def check_color(color: str) -> str:
         except ValueError:
             raise ValueError(f"Invalid color name {color}.") from None
 
+
+def check_rgb_color(color: str | tuple[int, int, int]) -> tuple[int, int, int]:
+    if isinstance(color, (tuple, np.ndarray)) and len(color) == 3:
+        return color
+    elif isinstance(color, str):
+        import webcolors
+
+        try:
+            return webcolors.name_to_rgb(color)
+        except ValueError:
+            raise ValueError(f"Invalid color name {color}.") from None
+    else:
+        raise ValueError(f"Invalid color {color}. Must be a tuple of 3 integers or a string.")
 
 class ColorRange(dict):
     def __init__(self, colors: dict[float, str | tuple[str, str]], update_callback: Callable = None):
