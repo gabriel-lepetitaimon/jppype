@@ -31,24 +31,23 @@ export default function View2DRender(props: View2DRenderProps) {
       options: opt,
       sceneDomain: props.sceneDomain,
       pixelSize,
-      key: name,
     };
 
     switch (data.type) {
       case "image":
-        layers.push(<ImageLayer {...layerArgs} />);
+        layers.push(<ImageLayer key={name} {...layerArgs} />);
         break;
       case "label":
-        layers.push(<LabelLayer {...layerArgs} />);
+        layers.push(<LabelLayer key={name} {...layerArgs} />);
         break;
       case "graph":
-        layers.push(<GraphLayer {...layerArgs} />);
+        layers.push(<GraphLayer key={name} {...layerArgs} />);
         break;
       case "polygons":
-        layers.push(<SvgPolygonsLayer {...layerArgs} />);
+        layers.push(<SvgPolygonsLayer key={name} {...layerArgs} />);
         break;
       case "quiver":
-        layers.push(<QuiverLayer {...layerArgs} />);
+        layers.push(<QuiverLayer key={name} {...layerArgs} />);
         break;
     }
   }
