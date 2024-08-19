@@ -22,12 +22,8 @@ To release a new version of jppype on PyPI, first make sure that the `build` pac
    tbump <new-version>
    ```
 2. Clean the repository and install npm package required for building the extension 
-   _(required because `python -m build` seems to download node_modules in a temporary folder which prevent jupyter lab buildextension from finding the node package: @jupyterlab/builder)_:
    ```bash
    git clean -fdx
-   cd ts-src
-   npm install
-   cd ..
    ```
 3. Generate Python packages and upload to PyPI:
    ```bash
