@@ -169,10 +169,10 @@ function View2D(props: View2DProps) {
 
   const sceneSize = t.sceneRect.size.multiply(zoomTransform.scale);
 
-  const center = zoomTransform.areaState.viewSize.half().subtract(
-    (t.center.subtract(t.sceneRect.topLeft).add(t.sceneDomain.topLeft))
-      .multiply(t.scale)
+  const viewTopLeft = zoomTransform.areaState.viewSize.half().subtract(
+    (t.center.subtract(t.sceneDomain.topLeft)).multiply(t.scale)
   );
+
 
   // const cx = (zoomTransform.center.x - zoomTransform.sceneRect.left + zoomTransform.sceneDomain.left) * zoomTransform.scale;
   // const cy = h/2 - (zoomTransform.center.y - zoomTransform.sceneRect.top + zoomTransform.sceneDomain.top) * zoomTransform.scale;
@@ -181,8 +181,8 @@ function View2D(props: View2DProps) {
     width: `${sceneSize.x}px`,
     height: `${sceneSize.y}px`,
     position: "absolute",
-    left: `${center.x}px`,
-    top: `${center.y}px`,
+    left: `${viewTopLeft.x}px`,
+    top: `${viewTopLeft.y}px`,
   };
 
   const topRuler = showTopRuler
