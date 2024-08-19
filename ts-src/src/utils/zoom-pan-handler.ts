@@ -1085,7 +1085,7 @@ export function useSceneMouseEventListener(
       }
     };
 
-    node.addEventListener("wheel", wheelEL);
+    node.addEventListener("wheel", wheelEL, { passive: false });
     node.addEventListener("mousemove", mouseEL);
     node.addEventListener("mousedown", mouseEL);
     node.addEventListener("mouseup", mouseEL);
