@@ -177,7 +177,7 @@ export class JBaseCommand {
 export class JModel extends DOMWidgetModel {
   protected view_name = "JBaseWidget";
   protected model_name = "JBaseWidget_Model";
-  protected syncTimeout: number | undefined = undefined;
+  protected syncTimeout: NodeJS.Timeout | undefined = undefined;
 
   defaults(): any {
     return {

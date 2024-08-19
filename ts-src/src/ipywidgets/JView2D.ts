@@ -1,6 +1,6 @@
 import { DOMWidgetModel, ISerializers } from "@jupyter-widgets/base";
 import { createElement } from "react";
-import { render } from "react-dom";
+import { createRoot } from 'react-dom/client';
 import View2D from "../react-components/View2D";
 import { Point, Rect } from "../utils/point";
 import { SceneMouseEvent, Transform } from "../utils/zoom-pan-handler";
@@ -33,7 +33,8 @@ export class JView2D extends JBaseWidget {
         button: ev.button,
       };
     };
-
+    
+    const root = createRoot(el);
     const component = createElement(View2D, {
       model: this.model as JView2DModel,
       events: {
@@ -52,8 +53,8 @@ export class JView2D extends JBaseWidget {
           el.focus();
         },
       },
-    });
-    render(component, el);
+    }, null);
+    root.render(component);
   }
 
   static {

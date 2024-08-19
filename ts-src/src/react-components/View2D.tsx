@@ -64,7 +64,7 @@ const useImageViewerStore = instantiatedStore(() =>
 
 function View2D(props: View2DProps) {
   // --- STATES ---
-  const ref = useRef<HTMLDivElement | null>(null);
+  const ref = useRef<HTMLDivElement>(null);
   // const [layers] = JView2DModel.use('_layers_data');
   const [_] = JView2DModel.use("_loading");
   const [areaSelected] = JView2DModel.use("_area_selected");
