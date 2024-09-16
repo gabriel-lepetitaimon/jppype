@@ -27,13 +27,23 @@ To release a new version of jppype on PyPI, first make sure that the `build` pac
    ```bash
    git clean -fdx
    ```
-3. Generate Python packages and upload to PyPI:
+3. Generate Python packages:
    ```bash
    python -m build
    twine check dist/jppype-*
+   ```
+
+4. Test it by installing it in a new environment and running the examples:
+   ```bash
+   pip install dist/jppype-*.whl
+   ```
+
+5. Upload to PyPI:
+   ```bash
    twine upload dist/jppype-*
    ```
-4. Update version to dev again:
+
+6. Update version to dev again:
    ```bash
    tbump <new-version>.dev0
    git commit -a -m 'Back to dev'
