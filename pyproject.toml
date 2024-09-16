@@ -79,6 +79,9 @@ exclude = [
 ]
 
 [tool.hatch.build.hooks.jupyter-builder]
+dependencies = [
+    "hatch-jupyter-builder>=0.8.1",
+]
 build-function = "hatch_jupyter_builder.npm_builder"
 ensured-targets = [
     "jppype/nbextension/index.js",
@@ -88,9 +91,7 @@ skip-if-exists = [
     "jppype/nbextension/index.js",
     "jppype/labextension/package.json",
 ]
-dependencies = [
-    "hatch-jupyter-builder>=0.8.1",
-]
+
 
 [tool.hatch.build.hooks.jupyter-builder.build-kwargs]
 build_cmd = "build:prod"

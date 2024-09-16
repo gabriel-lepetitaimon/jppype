@@ -17,11 +17,13 @@ git clean -fdx # actually delete untracked files
 
 To release a new version of jppype on PyPI, first make sure that the `build` package is installed: `pip install build`.
 
-1. Update the release versions manually in `pyproject.toml`, `jppype/_version.py` and `ts-src/package.json`, or with:
+1. Update the release versions  with:
    ```bash
    tbump <new-version>
+   cd ts-src
+   jlpm install
    ```
-2. Clean the repository and install npm package required for building the extension 
+2. Clean the repository and install npm package required for building the extension (commit the yarn.lock file if necessary):
    ```bash
    git clean -fdx
    ```
