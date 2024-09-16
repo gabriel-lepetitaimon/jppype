@@ -79,24 +79,18 @@ pip install -U jupyterlab
 Install the python package and the extensions in development mode (this stage may take a while as it will build the jupyterlab extension):
 ```bash
 pip install -e .[dev,build]
-jupyter nbextension install --py --symlink --overwrite --sys-prefix jppype
-jupyter nbextension enable --py --sys-prefix jppype
-```
-If you which to develop for JupyterLab, also run the command:
-```bash
 jupyter labextension develop --overwrite jppype
 ```
 
 Then you need to rebuild the JS when you make a code change:
 ```bash
 cd ts-src
-jlpm clean
 jlpm build
 ```
 or automatically rebuild when a file changes:
 ```bash
 cd ts-src
-npm watch
+jlpm watch
 ```
 
 You then need to refresh the JupyterLab page when your javascript changes.
