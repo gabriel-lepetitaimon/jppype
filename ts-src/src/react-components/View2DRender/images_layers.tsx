@@ -43,7 +43,7 @@ export function LabelLayer(props: {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
     const cMap = useMemo(
-        () => cmap2RGBAlookup(data.infos.labels, options.cmap),
+        () => cmap2RGBAlookup(data.infos.labels, options.cmap, options.cmap[0]),
         [data.infos.label, options.cmap]
     );
 

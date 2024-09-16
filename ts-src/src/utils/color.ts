@@ -18,44 +18,58 @@ export function hexToRGBA(hex: string): [number, number, number, number] {
     throw new Error('Bad Hex Color format: ' + hex);
 }
 
+type DefaultColorsType = string | string[] | undefined;
 
-export type CMapHex = {[key: number]: string } | string[];
-export type CMapRGBA = {[key: number]: [number, number, number, number] } | [number, number, number, number][];
+export type CMapRGBA = {[key: number]: [number, number, number, number]} | [number, number, number, number][];
 
-export function cmap2RGBAlookup(labels: number[] | number, cmap: { [key: number]: string}, defaultColor='#0000'): CMapRGBA {
-    const hexCmap = cmap2Hexlookup(labels, cmap, defaultColor);
-    if (Array.isArray(hexCmap)) {
+export function cmap2RGBAlookup(labels: number, cmap: { [key: number]: string }, defaultColors: DefaultColorsType): [number, number, number, number][];
+export function cmap2RGBAlookup(labels: number[], cmap: { [key: number]: string }, defaultColors: DefaultColorsType): {[key: number]: [number, number, number, number] };
+export function cmap2RGBAlookup(labels: unknown, cmap: { [key: number]: string }, defaultColors:DefaultColorsType =undefined): unknown {
+    if (typeof labels == 'number'){
+        const hexCmap = cmap2Hexlookup(labels, cmap, defaultColors);
         return hexCmap.map(hexToRGBA);
-    } else {
+    } else if (Array.isArray(labels)) {
+        const hexCmap = cmap2Hexlookup(labels, cmap, defaultColors);
         return Object.fromEntries(Object.entries(hexCmap).map(([k, v]) => [k, hexToRGBA(v)]));
     }
 }
 
-export function cmap2Hexlookup(labels: number[] | number, cmap: { [key: number]: string}, defaultColor='#0000'): CMapHex {
-    const defaultColors = cmap[0] || defaultColor;
-    if(Array.isArray(labels)) {
+export function cmap2Hexlookup(labels: number[], cmap: { [key: number]: string}, defaultColors:DefaultColorsType): {[key: number]: string };
+export function cmap2Hexlookup(labels: number, cmap: { [key: number]: string}, defaultColors:DefaultColorsType): string[];
+export function cmap2Hexlookup(labels: unknown, cmap: { [key: number]: string }, defaultColors:DefaultColorsType=undefined): unknown {
+    let curatedDefaultColors: string[];
+    if (typeof defaultColors == 'string') 
+        curatedDefaultColors = [defaultColors];
+    else if (defaultColors === undefined)
+        curatedDefaultColors = ["#555"];
+    else
+        curatedDefaultColors = defaultColors as string[];
+
+    if (typeof labels == 'number'){
+        return Array.from({length: labels+1}, (_, i) => i).map(l => {
+            if(l===0) return "#0000";
+            let color: string;
+            if (l in cmap) {
+                color = cmap[l];
+            } else {
+                color = curatedDefaultColors[(l - 1) % curatedDefaultColors.length];
+            }
+            return color;
+        });
+    } else if(Array.isArray(labels)) {
         const c = Object.fromEntries((labels as number[])
-                                  .filter(l => l!==0)
-                                  .map(l => {
+                                        .filter(l => l!==0)
+                                        .map(l => {
             let color;
             if (l in cmap) {
                 color = cmap[l];
             } else {
-                color = defaultColors[(l - 1) % defaultColors.length];
+                color = curatedDefaultColors[(l - 1) % curatedDefaultColors.length];
             }
             return [l, color];
         }));
         return c;
     } else {
-        return Array.from({length: labels+1}, (_, i) => i).map(l => {
-            if(l===0) return "#0000";
-            let color;
-            if (l in cmap) {
-                color = cmap[l];
-            } else {
-                color = defaultColors[(l - 1) % defaultColors.length];
-            }
-            return color;
-        });
+        
     }
 }

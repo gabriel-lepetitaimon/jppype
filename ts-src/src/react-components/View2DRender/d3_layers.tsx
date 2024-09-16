@@ -25,7 +25,7 @@ export function GraphLayer(props: {
     const nbNodes = data.infos.nbNodes;
     const nbEdges = adjList.length;
     const nodeCMap = useMemo(
-        () => cmap2Hexlookup(nbNodes, options.nodes_cmap),
+        () => cmap2Hexlookup(nbNodes, options.nodes_cmap, options.nodes_cmap[0]),
         [nbNodes, options.nodes_cmap]
     );
     const nodeLabelsMap = useMemo(
@@ -98,12 +98,12 @@ export function GraphLayer(props: {
     const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
     const edgeRGBACMap = useMemo(
-        () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
+        () => cmap2RGBAlookup(nbEdges, options.edges_cmap, options.edges_cmap[0]),
         [nbEdges, options.edges_cmap]
     );
 
     const edgeHexCMap = useMemo(
-        () => cmap2Hexlookup(nbEdges, options.edges_cmap),
+        () => cmap2Hexlookup(nbEdges, options.edges_cmap, options.edges_cmap[0]),
         [nbEdges, options.edges_cmap]
     );
 
@@ -274,7 +274,7 @@ export function SvgPolygonsLayer(props: {
     const { data, options, sceneDomain } = props;
 
     const cMap = useMemo(
-        () => cmap2Hexlookup(data.infos.labels, options.cmap),
+        () => cmap2Hexlookup(data.infos.labels, options.cmap, options.cmap[0]),
         [data.infos.label, options.cmap]
     );
 
