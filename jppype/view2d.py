@@ -77,8 +77,7 @@ class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):
         }
         with self._transmit:
             self._layers_options = layers_options
-            if self.main_layer:
-                self._domain = self.main_layer.domain
+            self._domain = self.domain
 
     def __set_transmitting(self, value: bool):
         self._loading = value

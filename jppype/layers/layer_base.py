@@ -41,13 +41,11 @@ class LayerData:
 
 
 class LayerDataChangeDispatcher(Protocol):
-    def __call__(self, layer: Layer):
-        ...
+    def __call__(self, layer: Layer): ...
 
 
 class LayerOptionsChangeDispatcher(Protocol):
-    def __call__(self, layer: Layer, options: Dict[str, any]):
-        ...
+    def __call__(self, layer: Layer, options: Dict[str, any]): ...
 
 
 class DispatcherUnbind:
@@ -63,8 +61,7 @@ class DispatcherUnbind:
 
 
 class LayerSelector(Protocol):
-    def __call__(self, name: str, layer: Layer) -> bool:
-        ...
+    def __call__(self, name: str, layer: Layer) -> bool: ...
 
 
 class ContextLock:
@@ -376,24 +373,19 @@ class Layer(abc.ABC):
 
     # --- Abstract methods ---
     @abc.abstractmethod
-    def _fetch_data(self, **kwargs) -> LayerData:
-        ...
+    def _fetch_data(self, **kwargs) -> LayerData: ...
 
     @abc.abstractmethod
-    def update_data(self, data: any):
-        ...
+    def update_data(self, data: any): ...
 
     @abc.abstractmethod
-    def _fetch_item(self, **kwargs) -> Mapping[str, any]:
-        ...
+    def _fetch_item(self, **kwargs) -> Mapping[str, any]: ...
 
     @abc.abstractmethod
-    def _fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str, any]:
-        ...
+    def _fetch_graphs(self, rect: Tuple[float, float], **kwargs) -> Dict[str, any]: ...
 
     @abc.abstractmethod
-    def _shape(self) -> Tuple[int, int]:
-        ...
+    def _shape(self) -> Tuple[int, int]: ...
 
     # --- Communication method ---
     def _notify_data_change(self):
@@ -441,6 +433,7 @@ class LayersList(metaclass=abc.ABCMeta):
         self._layers_binding = {}
         self._update_lock = ContextLock(self.__release_update_lock)
         self._main_layer = None
+        self._manual_domain = None
 
     # --- Public methods to add, manipulate and remove layers ---
     def add_layer(self, layer: Layer, alias: str | None = None, domain: LayerDomain | None = None):
@@ -631,10 +624,19 @@ class LayersList(metaclass=abc.ABCMeta):
         return layers_alias[0] if single_layer else layers_alias
 
     def layers_domain(self) -> Rect:
-        domain = Rect.empty()
-        for layer in self:
-            domain = domain | Rect.from_size(layer.shape) if layer.domain == "auto" else layer.domain
-        return domain
+        return Rect.union([Rect.from_size(layer.shape) if layer.domain == "auto" else layer.domain for layer in self])
+
+    @property
+    def domain(self) -> Rect:
+        return self._manual_domain if self._manual_domain is not None else self.layers_domain()
+
+    @domain.setter
+    def domain(self, value: LayerDomain | None):
+        if value is None:
+            self._manual_domain = None
+        else:
+            self._manual_domain = Rect(*value)
+        self.__send_all_layers_options()
 
     # --- Item and Iterables accessors ---
     def __len__(self):
@@ -717,17 +719,13 @@ class LayersList(metaclass=abc.ABCMeta):
 
     # --- Abstract methods for communication ---
     @abc.abstractmethod
-    def _send_new_layers(self, layers: Iterable[Layer]):
-        ...
+    def _send_new_layers(self, layers: Iterable[Layer]): ...
 
     @abc.abstractmethod
-    def _send_delete_layers(self, layers: Iterable[Layer]):
-        ...
+    def _send_delete_layers(self, layers: Iterable[Layer]): ...
 
     @abc.abstractmethod
-    def _send_update_layers_data(self, layers: Iterable[Layer]):
-        ...
+    def _send_update_layers_data(self, layers: Iterable[Layer]): ...
 
     @abc.abstractmethod
-    def _send_update_layers_options(self, layers_options: Mapping[Layer, Mapping[str, any]]):
-        ...
+    def _send_update_layers_options(self, layers_options: Mapping[Layer, Mapping[str, any]]): ...

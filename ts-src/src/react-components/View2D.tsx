@@ -1,7 +1,7 @@
 import { CSSProperties, useMemo, useRef } from "react";
 import { JView2DModel } from "../ipywidgets/JView2D";
 import { JModelContext, useModelEvent } from "../ipywidgets/jbasewidget";
-import { Point, Rect } from "../utils/point";
+import { Point } from "../utils/point";
 import {
   MouseEventsListener,
   Transform,
@@ -78,7 +78,7 @@ function View2D(props: View2DProps) {
   const layers_data = model.layers_data;
   const layers_options = model.layers_options;
 
-  let sceneRect = Rect.EMPTY;
+  let sceneRect = layers_options[Object.keys(layers_options)[0]].domain;
   Object.values(layers_options).forEach((layer) => {
     sceneRect = sceneRect.union(layer.domain);
   });
@@ -110,7 +110,7 @@ function View2D(props: View2DProps) {
     return [observable, observer];
   }, []);
 
-  const zoomTransform = useZoomTransform(ref, sceneRect, 50, domain, syncTransform);
+  const zoomTransform = useZoomTransform(ref, domain, 50, domain, syncTransform);
 
   const syncCursorPos: [Observable<Point | null>, (p: Point | null) => void] = useMemo(() => {
     const observable = new Observable<Point | null>((subcriber) => {
@@ -167,7 +167,7 @@ function View2D(props: View2DProps) {
 
   const t = zoomTransform;
 
-  const sceneSize = t.sceneRect.size.multiply(zoomTransform.scale);
+  const sceneSize = t.sceneDomain.size.multiply(zoomTransform.scale);
 
   const viewTopLeft = zoomTransform.areaState.viewSize.half().subtract(
     (t.center.subtract(t.sceneDomain.topLeft)).multiply(t.scale)
@@ -224,18 +224,18 @@ function View2D(props: View2DProps) {
             <View2DRender
               layers={layers_data}
               options={layers_options}
-              sceneDomain={sceneRect}
+              sceneDomain={t.sceneDomain}
               scale={zoomTransform.scale}
             />
             <RectSelectionOverlay
-              sceneDomain={sceneRect}
+              sceneDomain={t.sceneDomain}
               selection={areaSelected}
               shadowOpacity={0.5}
             />
           </div>
         </div>
         <div className={"ImageViewportOverlays"}>
-          <CursorOverlay sceneDomain={sceneRect} cursorPos={cursorPos} transform={zoomTransform} />
+          <CursorOverlay sceneDomain={t.sceneDomain} cursorPos={cursorPos} transform={zoomTransform} />
         </div>
       </div>
     </div>

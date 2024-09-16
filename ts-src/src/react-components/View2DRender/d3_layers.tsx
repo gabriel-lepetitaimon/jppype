@@ -14,6 +14,7 @@ export function GraphLayer(props: {
     options: LayerOptions;
     sceneDomain: Rect;
     pixelSize: number;
+    scale: number;
 }) {
     const { data, options, sceneDomain } = props;
     const { opacity } = options;
@@ -37,7 +38,7 @@ export function GraphLayer(props: {
                         <circle
                             cx={x + 0.5}
                             cy={y + 0.5}
-                            r={4.5 / props.pixelSize}
+                            r={4.5 / props.scale}
                             fill={color}
                             stroke="white"
                             style={{ strokeWidth: "calc(1 / var(--pixelSize))" }}

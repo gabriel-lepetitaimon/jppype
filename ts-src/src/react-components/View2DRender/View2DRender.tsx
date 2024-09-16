@@ -41,7 +41,7 @@ export default function View2DRender(props: View2DRenderProps) {
         layers.push(<LabelLayer key={name} {...layerArgs} />);
         break;
       case "graph":
-        layers.push(<GraphLayer key={name} {...layerArgs} />);
+        layers.push(<GraphLayer key={name} scale={props.scale} {...layerArgs} />);
         break;
       case "polygons":
         layers.push(<SvgPolygonsLayer key={name} {...layerArgs} />);
