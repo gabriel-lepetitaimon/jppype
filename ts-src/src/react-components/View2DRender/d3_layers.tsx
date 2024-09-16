@@ -7,6 +7,7 @@ import { LayerData, LayerOptions } from "../../ipywidgets/JView2D";
 import { cmap2Hexlookup, cmap2RGBAlookup } from "../../utils/color";
 import { Rect } from "../../utils/point";
 import { drawLabels, getLayerStyle } from "./layers_utils";
+import { dict2lookup as mapping2lookup } from "../../utils/lookup";
 
 
 export function GraphLayer(props: {
@@ -22,9 +23,33 @@ export function GraphLayer(props: {
     const adjList: number[][] = data.data.adj;
 
     const nbNodes = data.infos.nbNodes;
+    const nbEdges = adjList.length;
     const nodeCMap = useMemo(
         () => cmap2Hexlookup(nbNodes, options.nodes_cmap),
         [nbNodes, options.nodes_cmap]
+    );
+    const nodeLabelsMap = useMemo(
+        () => {
+            if (options.nodes_labels) {
+                const l = mapping2lookup(nbNodes, options.nodes_labels);
+                return (nodeId: number) => l[nodeId];
+            }
+            return (nodeId: number) => nodeId.toString();
+
+        },
+        [nbNodes, options.nodes_labels]
+    );
+    const edgeLabelsMap = useMemo(
+        () => {
+            console.log(options.edges_labels);
+            if (options.edges_labels) {
+                const l = mapping2lookup(nbEdges, options.edges_labels);
+                return (edgeId: number) => l[edgeId];
+            }
+            return (edgeId: number) => edgeId.toString();
+
+        },
+        [nbEdges, options.edges_labels]
     );
 
     const nodes = useMemo(
@@ -45,7 +70,7 @@ export function GraphLayer(props: {
                         >
                             <title>Node {i}</title>
                         </circle>
-                        {options.node_labels_visible ? (
+                        {options.nodes_labels_visible ? (
                             <text
                                 fill={color}
                                 fontFamily={"sans-serif"}
@@ -54,9 +79,10 @@ export function GraphLayer(props: {
                                     fontSize: "calc(13px / var(--pixelSize))",
                                     transform: `translate(calc(${x + 0.5}px + 7px / var(--pixelSize)), 
                                                           calc(${y + 0.5}px + 7px / var(--pixelSize)))`,
+                                    textAnchor: "start",
                                 }}
                             >
-                                {i}
+                                {nodeLabelsMap(i)}
                             </text>
                         ) : undefined}
                     </g>
@@ -66,12 +92,11 @@ export function GraphLayer(props: {
             data.data.nodes_yx,
             options.nodes_cmap,
             props.pixelSize,
-            options.node_labels_visible,
+            options.nodes_labels_visible,
         ]
     );
     const nodesDomain = Rect.fromTuple(data.infos.nodesDomain);
 
-    const nbEdges = adjList.length;
     const edgeRGBACMap = useMemo(
         () => cmap2RGBAlookup(nbEdges, options.edges_cmap),
         [nbEdges, options.edges_cmap]
@@ -82,20 +107,53 @@ export function GraphLayer(props: {
         [nbEdges, options.edges_cmap]
     );
 
-    const displayEdgeMap = data.data.edgeMap != null && options.edge_map_visible;
+    const displayEdgeMap = options.edge_map_visible;
     const edges = useMemo(() => {
+
+        const drawEdgeLabel = (edge: number[], i: number) => {
+            const color = edgeHexCMap[i + 1];
+            const node1_yx = data.data.nodes_yx[edge[0]];
+            const node2_yx = data.data.nodes_yx[edge[1]];
+            const [y1, x1] = node1_yx;
+            const [y2, x2] = node2_yx;
+            const [y_label, x_label] = data.data.edgeLabel_yx && data.data.edgeLabel_yx[i] ? data.data.edgeLabel_yx[i] : [(y1 + y2) / 2, (x1 + x2) / 2];
+
+            return (
+                <text
+                    fill={color}
+                    textDecoration={"overline"}
+                    fontFamily={"sans-serif"}
+                    fontWeight={"bold"}
+                    style={
+                        {
+                            transform: `translate(calc(${x_label + 0.5}px - 5px / var(--pixelSize)),` +
+                                ` calc(${y_label + 0.5}px - 5px / var(--pixelSize)))`,
+                            fontSize: "calc(13px / var(--pixelSize))",
+                            textAnchor: "end",
+                        }
+                    }
+                >
+                    {edgeLabelsMap(i)}
+                </text>
+            );
+        };
+
         if (!displayEdgeMap) {
             const edgePaths = data.data.edgePath;
-            return adjList.map((nodes: number[], i: number) => {
-                const node1_yx = data.data.nodes_yx[nodes[0]];
-                const node2_yx = data.data.nodes_yx[nodes[1]];
+            const dottedEdgePaths = data.data.dottedEdgePaths
+            return adjList.map((edge: number[], i: number) => {
+                const color = edgeHexCMap[i + 1];
+                const node1_yx = data.data.nodes_yx[edge[0]];
+                const node2_yx = data.data.nodes_yx[edge[1]];
                 const [y1, x1] = node1_yx;
                 const [y2, x2] = node2_yx;
-                const color = edgeHexCMap[i + 1];
-
                 const pathData = edgePaths !== undefined ? edgePaths[i] : undefined;
-                const curve = pathData !== undefined ? (
-                    <path
+                const dottedPathsData = dottedEdgePaths !== undefined ? dottedEdgePaths[i] : undefined;
+
+                let curve: Array<JSX.Element> | JSX.Element;
+
+                if (pathData !== undefined || dottedPathsData !== undefined) {
+                    curve = [<path
                         fill="none"
                         stroke={color}
                         opacity={options.edges_opacity}
@@ -104,52 +162,58 @@ export function GraphLayer(props: {
                             transform: `translate(0.5px, 0.5px)`
                         }}
                         d={pathData}
-                    />
-                ) : (
-                    <line
+                    />];
+                    if (dottedPathsData !== undefined) {
+                        curve = curve.concat(dottedPathsData.map((dottedPathData: any) => {
+                            return <path
+                                fill="none"
+                                stroke={color}
+                                opacity={options.edges_opacity}
+                                style={{
+                                    strokeWidth: "calc(2 / var(--pixelSize))",
+                                    strokeDasharray: "calc(6 / var(--pixelSize))",
+                                    transform: `translate(0.5px, 0.5px)`
+                                }}
+                                d={dottedPathData}
+                            />;
+                        }));
+                    }
+                } else {
+                    curve = <line
                         x1={x1 + 0.5}
                         y1={y1 + 0.5}
                         x2={x2 + 0.5}
                         y2={y2 + 0.5}
                         stroke={color}
                         opacity={options.edges_opacity}
-                        style={{ strokeWidth: "calc(3 / var(--pixelSize))" }}
+                        style={{
+                            strokeWidth: "calc(2 / var(--pixelSize))",
+                            strokeDasharray: edgePaths !== undefined ? "calc(6 / var(--pixelSize))" : undefined
+                        }}
                     >
                         <title> Edge {i} </title>
-                    </line>
-                );
+                    </line>;
+                }
 
-                return (
-                    <g key={i}>
-                        {curve}
-                        {options.edge_labels_visible ? (
-                            <text
-                                fill={color}
-                                textDecoration={"overline"}
-                                fontFamily={"sans-serif"}
-                                fontWeight={"bold"}
-                                style={
-                                    {
-                                        transform: `translate(calc(${(x1 + x2) / 2}px + 7px / var(--pixelSize)),
-                                                        calc(${(y1 + y2) / 2}px + 7px / var(--pixelSize)))`,
-                                        fontSize: "calc(13px / var(--pixelSize))",
-                                    }
-                                }
-                            >
-                                {i}
-                            </text>
-                        ) : undefined}
-                    </g>
-                );
+                return <g key={i}>
+                    {curve}
+                    {options.edges_labels_visible ? drawEdgeLabel(edge, i) : undefined}
+                </g>
             });
-        } else {
+        } else if (options.edges_labels_visible) {
+            return adjList.map((edge, i: number) => (
+                <g key={i}>
+                    {drawEdgeLabel(edge, i)}
+                </g>
+            ));
+        } else
             return [];
-        }
     }, [
         displayEdgeMap,
+        data.data.nodes_yx,
         data.data?.edgePath,
         options.edges_opacity,
-        options.edge_labels_visible,
+        options.edges_labels_visible,
         options.edges_cmap,
     ]);
 

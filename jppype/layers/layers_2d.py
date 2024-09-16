@@ -16,8 +16,9 @@ from .layer_base import Layer, LayerData, LayerDomain
 
 if TYPE_CHECKING:
     from torch import Tensor
-
-    ImageDataType = str | Path | np.ndarray | Tensor
+else:
+    Tensor = "Tensor"
+ImageDataType = str | Path | np.ndarray
 
 ValueBound: TypeAlias = Literal["auto"] | float | None
 
@@ -312,6 +313,35 @@ class LayerLabel(Layer):
         return LayerImage.encode_url(label, "png")
 
     @staticmethod
+    def check_label_string(labels, null_label=True) -> Dict[int, str]:
+        match labels:
+            case dict():
+                if not null_label:
+                    if None in labels:
+                        labels[-1] = labels.pop(None)
+                    labels = {k + 1: v for k, v in labels.items()}
+                if isinstance(labels.get(0, None), str):
+                    labels[0] = [labels[0]]
+            case list() | tuple():
+                labels = {0: list(labels)}
+            case None:
+                labels = {0: [""]}
+            case str():
+                labels = {0: [labels]}
+            case _:
+                raise ValueError(f"Invalid labels {labels}. Must be dict[int, str].")
+
+        try:
+            checked_labels = {}
+            if 0 in labels:
+                checked_labels[0] = [str(_) if _ is not None else "" for _ in labels[0]]
+            checked_labels |= {int(k): str(v) if v is not None else "" for k, v in labels.items() if k != 0}
+        except Exception as e:
+            raise ValueError(f"Invalid labels {labels}. Must be dict[int, str].") from e
+
+        return checked_labels
+
+    @staticmethod
     def check_label_colormap(cmap, null_label=True) -> Dict[int, str]:
         from ..utilities.color import check_color, colormap_by_name
 
@@ -427,22 +457,36 @@ class LayerGraph(Layer):
         nodes_coordinates,
         edge_map=None,
         edge_path=None,
+        dotted_edges_paths=None,
+        edges_label_coord=None,
         nodes_domain=None,
         nodes_cmap=None,
         edges_cmap=None,
     ):
         super().__init__("graph")
-        self.set_graph(adjacency_list, nodes_coordinates, edge_map, edge_path, nodes_domain)
+        self.set_graph(
+            adjacency_list, nodes_coordinates, edge_map, edge_path, dotted_edges_paths, edges_label_coord, nodes_domain
+        )
         self.nodes_cmap = nodes_cmap
         self.edges_cmap = edges_cmap
         self.edges_opacity = 0.7
-        self.node_labels_visible = False
-        self.edge_labels_visible = False
-        self.edge_map_visible = edge_map is None
+        self.nodes_labels_visible = False
+        self.edges_labels_visible = False
+        self.nodes_labels = None
+        self.edges_labels = None
+        self.edge_map_visible = edge_map is not None
+
         self.foreground = True
 
     def set_graph(
-        self, adjacency_list, nodes_coordinates, edge_map=None, edges_path=None, nodes_domains: Rect | None = None
+        self,
+        adjacency_list,
+        nodes_coordinates,
+        edge_map=None,
+        edges_path: List[str] | None = None,
+        dotted_edges_paths: List[List[str]] | None = None,
+        edges_label_coord=None,
+        nodes_domains: Rect | None = None,
     ):
         if nodes_domains is None and edge_map is not None:
             nodes_domains = Rect.from_size(edge_map.shape)
@@ -450,6 +494,8 @@ class LayerGraph(Layer):
         self._set_nodes_coordinates(nodes_coordinates, nodes_domains)
         self._set_edge_map(edge_map)
         self._set_edges_path(edges_path)
+        self._set_dotted_edges_paths(dotted_edges_paths)
+        self._set_edges_labels_coord(edges_label_coord)
         self._notify_data_change()
 
     def set_options(self, options: Dict[str, any], raise_on_error: bool = True):
@@ -460,10 +506,20 @@ class LayerGraph(Layer):
                 self._options[k] = LayerLabel.check_label_colormap(v, null_label=False)
             elif k == "edges_opacity":
                 self._options[k] = min(max(float(v), 0), 1)
-            elif k == "node_labels_visible":
+            elif k == "nodes_labels_visible":
                 self._options[k] = bool(v)
-            elif k == "edge_labels_visible":
+            elif k == "edges_labels_visible":
                 self._options[k] = bool(v)
+            elif k == "nodes_labels":
+                if v is None:
+                    self._options[k] = None
+                else:
+                    self._options[k] = LayerLabel.check_label_string(v, null_label=False)
+            elif k == "edges_labels":
+                if v is None:
+                    self._options[k] = None
+                else:
+                    self._options[k] = LayerLabel.check_label_string(v, null_label=False)
             elif k == "edge_map_visible":
                 self._options[k] = bool(v)
         super().set_options(options, raise_on_error)
@@ -473,11 +529,14 @@ class LayerGraph(Layer):
         return getattr(self, "_adjacency_list", None)
 
     @adjacency_list.setter
-    def adjacency_list(self, data):
+    def set_adjacency_list(self, data):
         self._set_adjacency_list(data)
         self._notify_data_change()
 
     def _set_adjacency_list(self, adj, check_dim=True):
+        if adj is None:
+            self._adjacency_list = None
+            return
         if type(adj).__qualname__ == "Tensor":
             adj = adj.detach().cpu().numpy()
         adj = np.asarray(adj)
@@ -485,8 +544,8 @@ class LayerGraph(Layer):
         if check_dim:
             if self.nodes_coordinates is not None:
                 assert (
-                    adj.max() < self.nodes_coordinates.shape[0]
-                ), f"Invalid adjacency list. {self.nodes_coordinates.shape[0]} nodes are expected."
+                    adj.max() >= self.nodes_coordinates.shape[0]
+                ), f"Invalid adjacency list. Maximum nodes index is {self.nodes_coordinates.shape[0]-1}."
             if self.edge_map is not None:
                 assert (
                     adj.shape[0] == self.edge_map.max()
@@ -498,7 +557,7 @@ class LayerGraph(Layer):
         return getattr(self, "_nodes_coordinates", None)
 
     @nodes_coordinates.setter
-    def nodes_coordinates(self, data):
+    def set_nodes_coordinates(self, data):
         self._set_nodes_coordinates(data)
         self._notify_data_change()
 
@@ -508,7 +567,7 @@ class LayerGraph(Layer):
             node_yx.ndim == 2 and node_yx.shape[1] == 2
         ), f"Invalid  nodes coordinates shape {node_yx.shape}. Must be (nbNodes, 2)."
         if check_dim:
-            if self.adjacency_list is not None:
+            if self.adjacency_list is not None and len(self.adjacency_list):
                 assert node_yx.shape[0] > self.adjacency_list.max(), (
                     f"Invalid nodes coordinates shape {node_yx.shape}. "
                     f"Expected at least {int(self.adjacency_list.max())+1} nodes but got {node_yx.shape[0]}."
@@ -526,7 +585,7 @@ class LayerGraph(Layer):
         return getattr(self, "_edge_map", None)
 
     @edge_map.setter
-    def edge_map(self, data):
+    def set_edge_map(self, data):
         self._set_edge_map(data)
         self._notify_data_change()
 
@@ -574,11 +633,11 @@ class LayerGraph(Layer):
         self.set_options({"edges_cmap": cmap})
 
     @property
-    def edges_path(self):
+    def edges_path(self) -> List[str] | None:
         return self._edges_path
 
     @edges_path.setter
-    def edges_path(self, edge_path):
+    def edges_path(self, edge_path: List[str] | None):
         self._set_edges_path(edge_path)
         self._notify_data_change()
 
@@ -592,20 +651,87 @@ class LayerGraph(Layer):
             self._edges_path = None
 
     @property
-    def node_labels_visible(self):
-        return self._options.get("node_labels_visible", False)
+    def dotted_edges_paths(self) -> List[List[str]] | None:
+        return self._dotted_edges_paths
 
-    @node_labels_visible.setter
-    def node_labels_visible(self, cmap):
-        self.set_options({"node_labels_visible": cmap})
+    @dotted_edges_paths.setter
+    def dotted_edges_paths(self, edge_path: List[List[str]] | None):
+        self._set_dotted_edges_paths(edge_path)
+        self._notify_data_change()
+
+    def _set_dotted_edges_paths(self, edge_path):
+        if edge_path is not None:
+            assert isinstance(edge_path, list) and all(
+                isinstance(e, list) and all(isinstance(p, str) for p in e) for e in edge_path
+            ), f"Invalid edge path {edge_path}. Must be a list of list of str."
+            self._dotted_edges_paths = edge_path
+        else:
+            self._dotted_edges_paths = None
 
     @property
-    def edge_labels_visible(self):
-        return self._options.get("edge_labels_visible", False)
+    def edges_labels_coord(self) -> List[Tuple[int, int] | None] | None:
+        return self._edges_labels_coord
 
-    @edge_labels_visible.setter
-    def edge_labels_visible(self, cmap):
-        self.set_options({"edge_labels_visible": cmap})
+    @edges_labels_coord.setter
+    def edges_labels_coord(self, label_yx):
+        self._set_edges_labels_coord(label_yx)
+        self._notify_data_change()
+
+    def _set_edges_labels_coord(self, label_yx, check_dim=True):
+        if label_yx is None:
+            self._edges_labels_coord = None
+            return
+
+        if type(label_yx).__qualname__ == "Tensor":
+            label_yx = label_yx.detach().cpu().numpy()
+        if isinstance(label_yx, np.ndarray):
+            assert (
+                label_yx.ndim == 2 and label_yx.shape[1] == 2
+            ), f"Invalid edge label coordinates shape {label_yx.shape}. Must be (nbEdges, 2)."
+            label_yx = label_yx.astype(float).tolist()
+        elif isinstance(label_yx, list):
+            assert len(label_yx) == self.adjacency_list.shape[0], (
+                f"Invalid edge label coordinates shape {len(label_yx)}. "
+                f"Expected {self.adjacency_list.shape[0]} coordinates."
+            )
+            assert all(
+                (isinstance(_, tuple) and len(_) == 2) or _ is None for _ in label_yx
+            ), f"Invalid edge label coordinates {label_yx}. Must be a list of tuple (y, x) or None."
+        else:
+            raise ValueError(f"Invalid edge label coordinates {label_yx}.")
+        self._edges_labels_coord = label_yx
+
+    @property
+    def nodes_labels_visible(self):
+        return self._options.get("nodes_labels_visible", False)
+
+    @nodes_labels_visible.setter
+    def nodes_labels_visible(self, cmap):
+        self.set_options({"nodes_labels_visible": cmap})
+
+    @property
+    def nodes_labels(self):
+        return self._options.get("nodes_labels", None)
+
+    @nodes_labels.setter
+    def nodes_labels(self, labels):
+        self.set_options({"nodes_labels": labels})
+
+    @property
+    def edges_labels_visible(self):
+        return self._options.get("edges_labels_visible", False)
+
+    @edges_labels_visible.setter
+    def edges_labels_visible(self, cmap):
+        self.set_options({"edges_labels_visible": cmap})
+
+    @property
+    def edges_labels(self):
+        return self._options.get("edges_labels", None)
+
+    @edges_labels.setter
+    def edges_labels(self, labels):
+        self.set_options({"edges_labels": labels})
 
     @property
     def edge_map_visible(self):
@@ -629,17 +755,24 @@ class LayerGraph(Layer):
         super().set_main_shape(main_domain, transform_domain)
 
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
-        data = dict(
-            adj=self._adjacency_list.astype(int).tolist(), nodes_yx=self.nodes_coordinates.astype(float).tolist()
-        )
-        if self.edge_map is not None:
-            data["edgeMap"] = LayerLabel.encode_url(self.edge_map)
-        if self.edges_path is not None:
-            data["edgePath"] = self.edges_path
+        data = dict(nodes_yx=self.nodes_coordinates.astype(float).tolist())
+        if self._adjacency_list is not None:
+            data["adj"] = self._adjacency_list.astype(int).tolist()
+        else:
+            data["adj"] = []
+        if self._edge_map is not None:
+            data["edgeMap"] = LayerLabel.encode_url(self._edge_map)
+        if self._edges_path is not None:
+            data["edgePath"] = self._edges_path
+        if self._dotted_edges_paths is not None:
+            data["dottedEdgePaths"] = self._dotted_edges_paths
+        if self._edges_labels_coord is not None:
+            data["edgeLabel_yx"] = self._edges_labels_coord
+
         return LayerData(
             data=data,
             infos={
-                "nbNodes": int(self._adjacency_list.max()) + 1,
+                "nbNodes": len(self._nodes_coordinates),
                 "nodesDomain": self._nodes_domain,
             },
         )
