@@ -97,7 +97,7 @@ skip-if-exists = [
 build_cmd = "build:prod"
 path = "./ts-src/"
 source_dir = "./ts-src/"
-
+npm = "jlpm"
 
 
 [tool.tbump]
