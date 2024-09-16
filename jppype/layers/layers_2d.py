@@ -6,12 +6,12 @@ import base64
 from pathlib import Path
 from typing import TYPE_CHECKING, Dict, List, Literal, Tuple, TypeAlias
 
-import cv2
 import numpy as np
 
-from ..utilities.color import check_color
-from ..utilities.geometric import Rect, Transform
-from ..utilities.image import fit_resize, load_image_from_url
+from ..utils.color import check_color
+from ..utils.geometric import Rect, Transform
+from ..utils.image import fit_resize, load_image_from_url
+from ..utils.safe_import import import_cv2
 from .layer_base import Layer, LayerData, LayerDomain
 
 if TYPE_CHECKING:
@@ -124,6 +124,7 @@ class LayerImage(Layer):
         if resize is not None:
             img = fit_resize(img, resize)
             if alpha is not None:
+                cv2 = import_cv2()
                 alpha = fit_resize(alpha, resize, interpolation=cv2.INTER_NEAREST)
 
         if alpha is not None:
@@ -183,6 +184,7 @@ class LayerImage(Layer):
 
     @staticmethod
     def encode_url(img: np.ndarray, format="jpg") -> str:
+        cv2 = import_cv2()
         _, data = cv2.imencode("." + format, img)
         return f"data:image/{format};base64," + base64.b64encode(data).decode("ascii")
 
@@ -230,6 +232,8 @@ class LayerLabel(Layer):
         self._notify_options_change({"strokeWidth": width})
 
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
+        cv2 = import_cv2()
+
         label = self._label_map
 
         h, w = label.shape[:2]
@@ -298,6 +302,7 @@ class LayerLabel(Layer):
             raise error
 
         if resize is not None:
+            cv2 = import_cv2()
             data = fit_resize(data, resize, interpolation=cv2.INTER_NEAREST)
 
         return data.astype(np.uint32)
@@ -343,7 +348,7 @@ class LayerLabel(Layer):
 
     @staticmethod
     def check_label_colormap(cmap, null_label=True) -> Dict[int, str]:
-        from ..utilities.color import check_color, colormap_by_name
+        from ..utils.color import check_color, colormap_by_name
 
         if not null_label and isinstance(cmap, dict):
             if None in cmap:
@@ -369,7 +374,7 @@ class LayerLabel(Layer):
 
 class LayerIntensityMap(Layer):
     def __init__(self, map: np.ndarray, color_range):
-        from ..utilities.color import ColorRange
+        from ..utils.color import ColorRange
 
         super().__init__("intensity")
         self.map = map
@@ -398,6 +403,7 @@ class LayerIntensityMap(Layer):
     def _fetch_data(self, resize: Tuple[int, int] | None = None) -> LayerData:
         map = self.map
         if resize is not None:
+            cv2 = import_cv2()
             map = fit_resize(map, resize, interpolation=cv2.INTER_NEAREST)
         return LayerData(LayerIntensityMap.encode_url(map))
 

@@ -12,8 +12,8 @@ import traitlets
 from ._frontend import ABCHasTraitMeta, BaseI3PWidget
 from .layers.layer_base import Layer, LayersList
 from .layers.layers_2d import LayerGraph, LayerImage, LayerLabel, ValueBound
-from .utilities.event import ClickEvent, EventsDispatcher
-from .utilities.func import FlagContext
+from .utils.event import ClickEvent, EventsDispatcher
+from .utils.func import FlagContext
 
 
 class View2D(LayersList, BaseI3PWidget, metaclass=ABCHasTraitMeta):

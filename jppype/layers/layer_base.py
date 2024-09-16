@@ -16,8 +16,8 @@ from typing import (
 )
 from uuid import uuid4
 
-from ..utilities.func import call_matching_params
-from ..utilities.geometric import FitMode, Rect, Transform
+from ..utils.func import call_matching_params
+from ..utils.geometric import FitMode, Rect, Transform
 
 
 # ======================================================================================================================

@@ -8,7 +8,7 @@ from IPython.display import display
 from ipywidgets import HTML, GridBox, Layout
 
 from .layers import Layer, LayerImage
-from .utilities.geometric import Rect
+from .utils.geometric import Rect
 from .view2d import View2D, sync_views
 
 
