@@ -138,12 +138,13 @@ class Mosaic(View2dGroup):
         self._rows_titles = [] if rows_titles is None else rows_titles
         self._cols_titles = [] if cols_titles is None else cols_titles
 
+        self._view_synced = sync
         if sync:
             if len(self.layout_shape) == 2:
                 for row in range(self.rows):
                     for col in range(self.cols):
-                        self[row, col]._top_ruler = row != 0
-                        self[row, col]._left_ruler = col != 0
+                        self[row, col]._top_ruler = row == 0
+                        self[row, col]._left_ruler = col == 0
             elif len(self.layout_shape) == 1:
                 for col in range(1, self.cols):
                     self[col]._left_ruler = False
@@ -168,17 +169,22 @@ class Mosaic(View2dGroup):
 
     def draw_mosaic(self):
         views = list(self.views)
-        col_layout = f"repeat({self.cols}, 1fr)"
+        if self._view_synced:
+            cell_width = f"{100 // self.cols}%" if not self._rows_titles else f"calc((100% - 5em) / {self.cols})"
+            col_layout = f"{cell_width} repeat({self.cols-1}, calc({cell_width} - 15px)"
+            row_layout = f"calc({self.cell_height}px + 15px) repeat({self.rows-1}, {self.cell_height}px)"
+        else:
+            col_layout = f"repeat({self.cols}, 1fr)"
+
         if self._rows_titles:
             assert len(self._rows_titles) == self.rows, "Number of rows titles must be equal to the number of rows"
             for i, title in enumerate(self._rows_titles):
                 title_item = HTML(
-                    f'<h3 style="text-align: center; writing-mode: vertical-lr; height: 100%; transform: rotate(-180deg);">{title}</h3>'
+                    '<h3 style="text-align: center; writing-mode: vertical-lr; height: 100%; '
+                    f'transform: rotate(-180deg);">{title}</h3>'
                 )
                 views.insert(i * (self.cols + 1), title_item)
-            col_layout = f"auto {col_layout}"
-
-        row_layout = f"repeat({self.rows}, {self._cell_height}px)"
+            col_layout = f"5em {col_layout}"
 
         if self._cols_titles:
             assert len(self._cols_titles) == self.cols, "Number of cols titles must be equal to the number of cols"
