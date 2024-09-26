@@ -31,6 +31,7 @@ class LayerImage(Layer):
         vmax: ValueBound = "auto",
         vmin: ValueBound = "auto",
         resize_buffer: Tuple[int, int] | int | None = None,
+        bgr=False,
     ):
         super().__init__("image")
         self.buffer_size = resize_buffer
@@ -43,6 +44,7 @@ class LayerImage(Layer):
 
         self.vmin = vmin
         self.vmax = vmax
+        self.bgr = bgr
 
     # --- Properties ---
     @property
@@ -118,6 +120,9 @@ class LayerImage(Layer):
                 vmax = vmax - vmin
         if vmax is not None:
             img = img / vmax * 255.0
+
+        if not self.bgr:
+            img = img[:, :, ::-1]
 
         alpha = self.alpha
         h, w = img.shape[:2]
