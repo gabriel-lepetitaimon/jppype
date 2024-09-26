@@ -171,10 +171,15 @@ class Mosaic(View2dGroup):
         views = list(self.views)
         if self._view_synced:
             cell_width = f"{100 // self.cols}%" if not self._rows_titles else f"calc((100% - 5em) / {self.cols})"
-            col_layout = f"{cell_width} repeat({self.cols-1}, calc({cell_width} - 15px)"
-            row_layout = f"calc({self.cell_height}px + 15px) repeat({self.rows-1}, {self.cell_height}px)"
+            col_layout = f"{cell_width}"
+            if self.cols > 1:
+                col_layout += f"repeat({self.cols-1}, {cell_width})"
+            row_layout = f"calc({self._cell_height}px + 15px)"
+            if self.rows > 1:
+                row_layout += f"repeat({self.rows-1}, {self._cell_height}px)"
         else:
             col_layout = f"repeat({self.cols}, 1fr)"
+            row_layout = f"repeat({self.cols}, {self._cell_height}px)"
 
         if self._rows_titles:
             assert len(self._rows_titles) == self.rows, "Number of rows titles must be equal to the number of rows"
