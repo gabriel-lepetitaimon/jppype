@@ -32,7 +32,7 @@ export function GraphLayer(props: {
         () => {
             if (options.nodes_labels) {
                 const l = mapping2lookup(nbNodes, options.nodes_labels);
-                return (nodeId: number) => l[nodeId];
+                return (nodeId: number) => l[nodeId + 1];
             }
             return (nodeId: number) => nodeId.toString();
 
@@ -41,10 +41,9 @@ export function GraphLayer(props: {
     );
     const edgeLabelsMap = useMemo(
         () => {
-            console.log(options.edges_labels);
             if (options.edges_labels) {
                 const l = mapping2lookup(nbEdges, options.edges_labels);
-                return (edgeId: number) => l[edgeId];
+                return (edgeId: number) => l[edgeId + 1];
             }
             return (edgeId: number) => edgeId.toString();
 

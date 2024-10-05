@@ -60,7 +60,6 @@ export class JView2D extends JBaseWidget {
   static {
     JView2D.addCommand("jview2d:toggle-foreground", {
       execute: (widget) => {
-        console.log("toggle-foreground");
         widget.model.set("_hide_foreground", !widget.model.get("_hide_foreground"));
         widget.model.save_changes();
       },
