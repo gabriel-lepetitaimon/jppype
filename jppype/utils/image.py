@@ -28,6 +28,8 @@ def load_image_from_url(url: str | Path):
     else:
         raise ValueError(f"No file was found at: {url}.")
 
+    if img.ndim == 3:
+        img = img[:, :, ::-1]
     return img
 
 
